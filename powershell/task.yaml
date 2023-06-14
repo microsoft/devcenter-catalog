@@ -1,7 +1,0 @@
-name: powershell
-command: "powershell {{script}}"
-inputs:
-  script:
-    type: string
-    defaultValue: ""    
-    required: true

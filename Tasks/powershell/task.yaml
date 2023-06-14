@@ -1,0 +1,9 @@
+# This is a simple powershell command execution task for Dev Box.
+
+name: powershell
+command: ".\\runcommand.ps1 {{command}}"
+inputs:
+  command:
+    type: string
+    defaultValue: ""    
+    required: true
