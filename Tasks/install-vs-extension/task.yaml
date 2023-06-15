@@ -1,0 +1,6 @@
+name: install-vs-extension
+command: "./Install-VSIXExtension.ps1 -MarketplaceItemName {{packageName}}"
+inputs:
+  packageName:
+    type: literal
+    required: true
