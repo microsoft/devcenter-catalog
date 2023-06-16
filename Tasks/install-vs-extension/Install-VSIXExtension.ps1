@@ -23,6 +23,9 @@ function Get-VSIXFromMarketplace
         $MarketplaceItemName
     )
 
+    # Declare exit code. Default to failure and set to 0 when operation succeeds.
+    $exitCode = 1
+
     # Turn off progress to fix speed bug in Invoke-WebRequest
     $ProgressPreference = 'SilentlyContinue'
 
@@ -51,12 +54,12 @@ function Get-VSIXFromMarketplace
 
     if(-not $extensions -or ($extensions -is [array] -and $extensions.length -le 0)) {
         Write-Warning "No extensions found"
-        return ""
+        exit $exitcode
     }
 
     if($extensions -is [array] -and $extensions.length -gt 1) {
         Write-Warning "Multiple extensions ($($extensions.length)) found for the given item name $MarketplaceItemName"
-        return ""
+        exit $exitcode
     }
 
     $cdnUrl = "$($extensions.versions[0].fallbackAssetUri)/Microsoft.VisualStudio.IDE.Payload?redirect=true&install=true"
@@ -114,6 +117,7 @@ function Assert-VsWherePresent
     if(-not (Test-Path (Get-VsWherePath)))
     {
         throw "Visual Studio Locator not found."
+        exit $exitcode
     }
 }
 
@@ -157,6 +161,7 @@ function Assert-VsixInstallerPresent
     if(-not (Test-Path (Get-VsixInstallerPath)))
     {
         throw "VSIX Installer not found."
+        exit $exitcode
     }
 }
 
@@ -166,7 +171,7 @@ $pathToVSIX = Get-VSIXFromMarketplace $MarketplaceItemName
 
 if(-not $pathToVsix -or -not (Test-Path $pathToVSIX -PathType Leaf)) {
     Write-Warning "No extension downloaded; skipping install"
-    return
+    exit $exitcode
 }
 
 Write-Host "Invoking VSIX Installer for downloaded VSIX at $pathToVsix..."
@@ -175,5 +180,7 @@ Invoke-VsixInstaller "/a /enableUpdate /q /f /sp $pathToVSIX" | Out-Null
 Wait-Process (Get-Process VsixInstaller).id -Timeout 600
 
 Write-Host "VSIX Installer Completed."
+$exitcode = 0
+exit $exitCode
 
 # ---- Main Script End ----
