@@ -54,9 +54,6 @@ function Get-VSIXFromMarketplace
     } else {
         $instanceVersion = $Version
     }
-    
-    Write-Host $instanceVersion 
-    Write-Host $instanceVersion.GetType()
 
     $isolationInfo = ConvertFrom-StringData((Get-Content "$($vswhereResult.ProductPath -replace ".exe",".isolation.ini")" | Select-Object -Skip 2) -replace "\\","\\\\" -join "`n")
     $arch = If ($isolationInfo.ProductArch -eq "x64") { "amd64" } else { $isolationInfo.ProductArch }
@@ -175,8 +172,6 @@ function Invoke-VsixInstaller
 #>
 function Get-VsixInstallerPath
 {
-    $param = Join-Path -Path "${env:ProgramFiles(x86)}" -ChildPath "Microsoft Visual Studio\Installer\resources\app\ServiceHub\Services\Microsoft.VisualStudio.Setup.Service\VSIXInstaller.exe"
-    Write-Host $param
     return Join-Path -Path "${env:ProgramFiles(x86)}" -ChildPath "Microsoft Visual Studio\Installer\resources\app\ServiceHub\Services\Microsoft.VisualStudio.Setup.Service\VSIXInstaller.exe"
 }
 
