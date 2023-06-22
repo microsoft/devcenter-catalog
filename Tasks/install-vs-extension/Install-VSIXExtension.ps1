@@ -118,7 +118,6 @@ function Assert-VsWherePresent
     if(-not (Test-Path (Get-VsWherePath)))
     {
         throw "Visual Studio Locator not found."
-        exit $exitcode
     }
 }
 
@@ -162,7 +161,6 @@ function Assert-VsixInstallerPresent
     if(-not (Test-Path (Get-VsixInstallerPath)))
     {
         throw "VSIX Installer not found."
-        exit $exitcode
     }
 }
 
