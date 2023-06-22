@@ -1,7 +1,4 @@
 <#
-Script provided by the VS Setup team. 
-Original can be found here: https://gist.github.com/Preecington/590b9e02219d1b60a7bcc6ab6607c867
-
 .SYNOPSIS
     Install an extension defined by the given item name to the latest Visual Studio instance
 .PARAMETER MarketplaceItemName 
