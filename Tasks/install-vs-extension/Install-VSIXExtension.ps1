@@ -175,8 +175,14 @@ if(-not $pathToVsix -or -not (Test-Path $pathToVSIX -PathType Leaf)) {
 
 Write-Host "Invoking VSIX Installer for downloaded VSIX at $pathToVsix..."
 
-Invoke-VsixInstaller "/a /enableUpdate /q /f /sp $pathToVSIX" | Out-Null
-Wait-Process (Get-Process VsixInstaller).id -Timeout 600
+try {
+    Invoke-VsixInstaller "/a /enableUpdate /q /f /sp $pathToVSIX" | Out-Null
+    Wait-Process (Get-Process VsixInstaller).id -Timeout 600
+}
+catch {
+    Write-Warning "VSIX Installer failed with error: $_"
+    exit $exitcode
+}
 
 Write-Host "VSIX Installer Completed."
 Write-Host "$MarketplaceItemName Successfully installed."
