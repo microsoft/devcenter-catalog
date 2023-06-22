@@ -15,12 +15,12 @@ param (
 .PARAMETER MarketplaceItemName 
     Markplace Item Name (as used in the URI of a given Visual Studio Extension Maketplace entry)
 #>
+
 function Get-VSIXFromMarketplace
 {
     param (
         [Parameter(Mandatory)]
-        [string]
-        $MarketplaceItemName
+        [string]$MarketplaceItemName
     )
 
     # Declare exit code. Default to failure and set to 0 when operation succeeds.
@@ -30,6 +30,7 @@ function Get-VSIXFromMarketplace
     $ProgressPreference = 'SilentlyContinue'
 
     $vswhereResult = Invoke-VsWhere "-prerelease -latest -format json" | ConvertFrom-Json
+    
     $instanceVersion = $vswhereResult.InstallationVersion
 
     $isolationInfo = ConvertFrom-StringData((Get-Content "$($vswhereResult.ProductPath -replace ".exe",".isolation.ini")" | Select-Object -Skip 2) -replace "\\","\\\\" -join "`n")
@@ -53,7 +54,7 @@ function Get-VSIXFromMarketplace
     $extensions = $jsonResponse.results.extensions
 
     if(-not $extensions -or ($extensions -is [array] -and $extensions.length -le 0)) {
-        Write-Warning "No extensions found"
+        Write-Warning "No extension was found for item: $MarketplaceItemName. Specify a valid extension."
         exit $exitcode
     }
 
@@ -64,8 +65,8 @@ function Get-VSIXFromMarketplace
 
     $cdnUrl = "$($extensions.versions[0].fallbackAssetUri)/Microsoft.VisualStudio.IDE.Payload?redirect=true&install=true"
     $downloadFilePath =  Join-Path ([IO.Path]::GetTempPath()) ([IO.Path]::ChangeExtension("VSIX$([IO.Path]::GetRandomFileName())", ".vsix"))
-
-    Write-Host "Downloading $($extensions.displayName)"
+    $extensionName = $extensions.displayName
+    Write-Host "Downloading $extensionName"
 
     Invoke-WebRequest $cdnUrl -UseBasicParsing -OutFile $downloadFilePath
 
@@ -126,7 +127,7 @@ function Assert-VsWherePresent
     Invokes VSIX Installer, if it exists, with the provided arguments.
 .DESCRIPTION
     Invokes VSIX Installer with the provided arguments.
-    If this script is run without VSIX Installler present, it will fail.
+    If this script is run without VSIX Installer present, it will fail.
 .PARAMETER Arguments
     Arguments to pass onwards to VSIX Installer.
 #>
@@ -170,16 +171,24 @@ function Assert-VsixInstallerPresent
 $pathToVSIX = Get-VSIXFromMarketplace $MarketplaceItemName
 
 if(-not $pathToVsix -or -not (Test-Path $pathToVSIX -PathType Leaf)) {
-    Write-Warning "No extension downloaded; skipping install"
+    Write-Warning "Issue with VSIX path for item $MarketplaceItemName. No extension downloaded; skipping install."
     exit $exitcode
 }
 
 Write-Host "Invoking VSIX Installer for downloaded VSIX at $pathToVsix..."
 
-Invoke-VsixInstaller "/a /enableUpdate /q /f /sp $pathToVSIX" | Out-Null
-Wait-Process (Get-Process VsixInstaller).id -Timeout 600
+try {
+    Invoke-VsixInstaller "/a /enableUpdate /q /f /sp $pathToVSIX" | Out-Null
+    Wait-Process (Get-Process VsixInstaller).id -Timeout 600
+}
+catch {
+    Write-Warning "VSIX Installer failed with error: $_"
+    exit $exitcode
+}
 
 Write-Host "VSIX Installer Completed."
+Write-Host "$MarketplaceItemName Successfully installed."
+
 $exitcode = 0
 exit $exitCode
 
