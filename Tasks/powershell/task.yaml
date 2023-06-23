@@ -1,9 +1,17 @@
 # This is a simple powershell command execution task for Dev Box.
 
 name: powershell
-command: ".\\runcommand.ps1 {{command}}"
+description: Execute a powershell command
+author: Microsoft Corporation
+command: ".\\runcommand.ps1 -command {{command}} -workingDirectory {{workingDirectory}}"
 inputs:
   command:
     type: string
-    defaultValue: ""    
+    defaultValue: ""
     required: true
+    description: The command to execute
+  workingDirectory:
+    type: string
+    defaultValue: ""
+    required: false
+    description: The working directory to execute the command in
