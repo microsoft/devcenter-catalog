@@ -6,5 +6,6 @@ setupTasks:
   - task: powershell
     inputs:
       command: "Invoke-WebRequest -Uri \"https://raw.githubusercontent.com/PowerShell/vscode-powershell/main/scripts/Install-VSCode.ps1\" -OutFile \"C:\vs.ps1\""
-#   - task: powershell
-#     - command: "powershell.exe -noexit &'c:\vs.ps1'"
+  - task: powershell
+    inputs:
+      command: "powershell.exe -noexit &'c:\vs.ps1'"
