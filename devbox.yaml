@@ -1,0 +1,10 @@
+name: dhruv-box
+image: microsoftwindowsdesktop_windows-ent-cpc_win11-22h2-ent-cpc-m365
+hostInformation: general_i_16c64gb1024ssd_v2
+supportsHibernation: true
+# setupTasks:
+#   - task: powershell
+#     inputs:
+#       - command: "Invoke-WebRequest -Uri \"https://raw.githubusercontent.com/PowerShell/vscode-powershell/main/scripts/Install-VSCode.ps1\" -OutFile \"C:\vs.ps1\""
+#   - task: powershell
+#     - command: "powershell.exe -noexit &'c:\vs.ps1'"
