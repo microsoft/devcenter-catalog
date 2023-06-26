@@ -1,3 +1,6 @@
+# Staging Environment 
+This branch is a dedicated staging environment and should not be merged to main. It is solely for the purposes of testing a devbox.yaml file. To be deleted.
+
 # Project
 
 > This repo has been populated by an initial template to help get you started. Please
