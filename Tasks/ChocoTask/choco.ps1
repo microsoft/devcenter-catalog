@@ -69,13 +69,13 @@ function Install-Packages
             $version = "--version " + $PackageVersions[$name]
         }
         $expression = "$ChocoExePath install -y -f --acceptlicense --no-progress --stoponfirstfailure $AdditionalOptions $name $version" # Change the command to install packages and versions
-        Invoke-ExpressionImpl -Expression $expression
+        Execute -Expression $expression
     }
 }
 
 # Install-Packages -ChocoExePath "C:\ProgramData\Chocolatey\choco.exe" -Packages "package1, package2" -AdditionalOptions "--ignore-dependencies" -PackageVersions @{ 'package1'='1.0.1'; 'package2'='2.3.4' }
 
-function Invoke-ExpressionImpl
+function Execute
 {
     [CmdletBinding()]
     param(
@@ -84,28 +84,36 @@ function Invoke-ExpressionImpl
 
     # This call will normally not throw. So, when setting -ErrorVariable it causes it to throw.
     # The variable $expError contains whatever is sent to stderr.
-    iex $Expression -ErrorVariable expError
+
+    # Note we're calling powershell.exe directly, instead
+    # of running Invoke-Expression, as suggested by
+    # https://learn.microsoft.com/en-us/powershell/scripting/learn/deep-dives/avoid-using-invoke-expression?view=powershell-7.3
+    # Note that this will run powershell.exe
+    # even if the system has pwsh.exe.
+    $process = Start-Process powershell.exe -ArgumentList "-Command $Expression" -NoNewWindow -PassThru -Wait
+    $expError = $process.StandardError.ReadToEnd()
 
     # This check allows us to capture cases where the command we execute exits with an error code.
     # In that case, we do want to throw an exception with whatever is in stderr. Normally, when
     # Invoke-Expression throws, the error will come the normal way (i.e. $Error) and pass via the
     # catch below.
-    if ($LastExitCode -or $expError)
+    if ($process.ExitCode -or $expError)
     {
-        if ($LastExitCode -eq 3010)
+        if ($process.ExitCode -eq 3010)
         {
             # Expected condition. The recent changes indicate a reboot is necessary. Please reboot at your earliest convenience.
         }
-        elseif ($expError[0])
+        elseif ($expError)
         {
-            throw $expError[0]
+            throw $expError
         }
         else
         {
-            throw "Installation failed ($LastExitCode). Please see the Chocolatey logs in %ALLUSERSPROFILE%\chocolatey\logs folder for details."
+            throw "Installation failed ($process.ExitCode). Please see the Chocolatey logs in %ALLUSERSPROFILE%\chocolatey\logs folder for details."
         }
     }
 }
+
 
 ###################################################################################################
 #
@@ -116,6 +124,8 @@ Write-Host 'Ensuring latest Chocolatey version is installed.'
 Ensure-Chocolatey -ChocoExePath "$choco"
 
 Write-Host "Preparing to install Chocolatey packages: $Packages."
-Install-Packages -ChocoExePath "$choco" -Packages $Packages -PackageVersions $PackageVersions -AdditionalOptions $AdditionalOptions 
+Install-Packages -ChocoExePath "$choco" -Packages $Packages -PackageVersions $PackageVersions -AdditionalOptions $AdditionalOptions
+
+#Start-Process powershell.exe -ArgumentList "-Command $expression" -NoNewWindow -Wait
 
 Write-Host "`nThe artifact was applied successfully.`n"
