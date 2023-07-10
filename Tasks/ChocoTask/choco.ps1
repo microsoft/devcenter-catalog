@@ -68,8 +68,13 @@ function Install-Packages
         if ($PackageVersions.ContainsKey($name)) { # Check if the version was defined
             $version = "--version " + $PackageVersions[$name]
         }
+<<<<<<< HEAD
         $expression = "$ChocoExePath install -y -f --acceptlicense --no-progress --stoponfirstfailure $AdditionalOptions $name $version" # Change the command to install packages and versions
         Execute -Expression $expression
+=======
+        $expression = "$ChocoExePath install -y -f --acceptlicense --ignore-checksums --no-progress --stoponfirstfailure $AdditionalOptions $name $version" # Change the command to install packages and versions
+        Invoke-ExpressionImpl -Expression $expression
+>>>>>>> 5875b8bbaa091390b11f09d8645e250421161671
     }
 }
 
@@ -125,7 +130,10 @@ Ensure-Chocolatey -ChocoExePath "$choco"
 
 Write-Host "Preparing to install Chocolatey packages: $Packages."
 Install-Packages -ChocoExePath "$choco" -Packages $Packages -PackageVersions $PackageVersions -AdditionalOptions $AdditionalOptions
+<<<<<<< HEAD
 
 #Start-Process powershell.exe -ArgumentList "-Command $expression" -NoNewWindow -Wait
+=======
+>>>>>>> 5875b8bbaa091390b11f09d8645e250421161671
 
 Write-Host "`nThe artifact was applied successfully.`n"
