@@ -1,4 +1,12 @@
 # This is a simple powershell command execution task for Dev Box.
+#
+# USAGE
+#
+# - task: powershell
+#     inputs:
+#       command: "Get-Date"
+#       workingDirectory: "."
+#
 
 name: powershell
 description: Execute a powershell command
