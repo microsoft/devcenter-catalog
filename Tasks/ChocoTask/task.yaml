@@ -1,3 +1,15 @@
+# This task installs choco package files
+#
+# USAGE
+#
+# - task: choco
+#     inputs:
+#       packages: "vscode, azure-cli"
+#       Versions: "{ 'vscode'='1.80.0'; 'azure-cli'='2.50.0' }"
+#       additionalOptions: "--verbose --ignore-dependencies"  
+#
+
+
 name: choco
 command: "./choco.ps1 -Packages {{packages}} -Versions {{Versions}}"
 inputs:

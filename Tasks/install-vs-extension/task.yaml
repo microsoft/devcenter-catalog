@@ -1,4 +1,13 @@
-# This is a Visual Studio extension installation task for Dev Box.
+# This is a Visual Studio extension installation task for Dev Box. 
+# It accepts a Markplace Item Name (as used in the URI of a given Visual Studio Extension Maketplace entry)
+#
+# USAGE
+#
+# - task: install-vs-extension
+#     inputs:
+#       marketplaceItemName: "GitHub.copilotvs"
+#
+
 
 name: install-vs-extension
 description: Installs a Visual Studio extension
