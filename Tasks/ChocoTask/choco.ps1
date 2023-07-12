@@ -96,6 +96,7 @@ function Execute
         else
         {
             throw "Installation failed ($LastExitCode). Please see the Chocolatey logs in %ALLUSERSPROFILE%\chocolatey\logs folder for details."
+        }
     }
 }
 
