@@ -1,13 +1,10 @@
 [CmdletBinding()]
 param(
     [Parameter()]
-    [string] $Packages,
+    [string] $Package,
 
     [Parameter()]
-    [string] $AdditionalOptions,
-
-    [Parameter()]
-	[hashtable] $PackageVersions = @{} # Add new parameter to allow package version definition
+    [string] $AdditionalOptions
 )
 
 ###################################################################################################
@@ -46,37 +43,27 @@ function Ensure-Chocolatey
     }
 }
 
-function Install-Packages
+function Install-Package
 {
     [CmdletBinding()]
     param(
         [string] $ChocoExePath,
-        [string] $Packages,
+        [string] $Package,
         [string] $AdditionalOptions,
-        [StringSplitOptions] $SplitOptions = [StringSplitOptions]::RemoveEmptyEntries,
-        $PackageVersions
+        [StringSplitOptions] $SplitOptions = [StringSplitOptions]::RemoveEmptyEntries
     )
 
-    # Split packages and their versions.
-    $PackageList = @()
-    foreach ($pkg in $Packages.Split(',; ', $SplitOptions)) {
-        $name, $version = $pkg.Split('=', 2)
-        $PackageList += @(New-Object PSObject -Property @{ Name = $name; Version = $version })
+    # Split package and version 
+    if ($Package.Contains('@')) {
+        $pkgName, $pkgVersion = $Package.Split('@')
+        $expression = "$ChocoExePath install -y -f --acceptlicense --no-progress --stoponfirstfailure $AdditionalOptions $pkgName --version $pkgVersion"
+        } else {
+        $pkgName = $Package
+        $expression = "$ChocoExePath install -y -f --acceptlicense --no-progress --stoponfirstfailure $AdditionalOptions $pkgName"
     }
 
-    # Install each package and version.
-    foreach ($pkg in $PackageList) {
-        $name = $pkg.Name
-        $version = ""
-        if ($PackageVersions.ContainsKey($name)) { # Check if the version was defined
-            $version = "--version " + $PackageVersions[$name]
-        }
-        $expression = "$ChocoExePath install -y -f --acceptlicense --no-progress --stoponfirstfailure $AdditionalOptions $name $version" # Change the command to install packages and versions
-        Execute -Expression $expression
-    }
+    Execute -Expression $expression
 }
-
-# Install-Packages -ChocoExePath "C:\ProgramData\Chocolatey\choco.exe" -Packages "package1, package2" -AdditionalOptions "--ignore-dependencies" -PackageVersions @{ 'package1'='1.0.1'; 'package2'='2.3.4' }
 
 function Execute
 {
@@ -123,6 +110,6 @@ Write-Host 'Ensuring latest Chocolatey version is installed.'
 Ensure-Chocolatey -ChocoExePath "$choco"
 
 Write-Host "Preparing to install Chocolatey packages: $Packages."
-Install-Packages -ChocoExePath "$choco" -Packages $Packages -PackageVersions $PackageVersions -AdditionalOptions $AdditionalOptions
+Install-Package -ChocoExePath "$choco" -Package $Package -AdditionalOptions $AdditionalOptions
 
 Write-Host "`nThe artifact was applied successfully.`n"
