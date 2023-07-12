@@ -95,7 +95,7 @@ function Execute
         }
         else
         {
-            throw "Installation failed ($process.ExitCode). Please see the Chocolatey logs in %ALLUSERSPROFILE%\chocolatey\logs folder for details."
+            throw "Installation failed $($process.ExitCode). Please see the Chocolatey logs in %ALLUSERSPROFILE%\chocolatey\logs folder for details."
         }
     }
 }
