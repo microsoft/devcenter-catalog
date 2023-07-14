@@ -1,10 +1,11 @@
 name: choco
-command: "./choco.ps1 -Package {{package}}"
+command: "./choco.ps1 -Package {{package}} {{#if ignoreChecksums}}--ignore-checksums{{/if}}"
 inputs:
-  additionalOptions:
-    type: "string"
-    required: false
   package:
     defaultValue: ""
     type: "string"
     required: true
+  ignoreChecksums:
+    defaultValue: false
+    type: "boolean"
+    required: false

@@ -4,7 +4,7 @@ param(
     [string] $Package,
 
     [Parameter()]
-    [string] $AdditionalOptions
+    [bool] $ignoreChecksum
 )
 
 ###################################################################################################
@@ -49,17 +49,25 @@ function Install-Package
     param(
         [string] $ChocoExePath,
         [string] $Package,
-        [string] $AdditionalOptions,
+        [bool] $ignoreChecksum,
         [StringSplitOptions] $SplitOptions = [StringSplitOptions]::RemoveEmptyEntries
     )
 
     # Split package and version 
     if ($Package.Contains('@')) {
         $pkgName, $pkgVersion = $Package.Split('@')
-        $expression = "$ChocoExePath install -y -f --acceptlicense --no-progress --stoponfirstfailure $AdditionalOptions $pkgName --version $pkgVersion"
+        if ($ignoreChecksum) {
+            $expression = "$ChocoExePath install -y -f --acceptlicense --no-progress --stoponfirstfailure --ignorechecksums $pkgName --version $pkgVersion"
         } else {
+            $expression = "$ChocoExePath install -y -f --acceptlicense --no-progress --stoponfirstfailure $pkgName --version $pkgVersion"
+        }
+    } else {
         $pkgName = $Package
-        $expression = "$ChocoExePath install -y -f --acceptlicense --no-progress --stoponfirstfailure $AdditionalOptions $pkgName"
+        if ($ignoreChecksum) {
+            $expression = "$ChocoExePath install -y -f --acceptlicense --no-progress --stoponfirstfailure --ignorechecksums $pkgName"
+        } else {
+            $expression = "$ChocoExePath install -y -f --acceptlicense --no-progress --stoponfirstfailure $pkgName"
+        }
     }
 
     Execute -Expression $expression
@@ -79,6 +87,7 @@ function Execute
     # even if the system has pwsh.exe.
     $process = Start-Process powershell.exe -ArgumentList "-Command $Expression" -NoNewWindow -PassThru -Wait
     $expError = $process.ExitCode.Exception
+    
     # This check allows us to capture cases where the command we execute exits with an error code.
     # In that case, we do want to throw an exception with whatever is in stderr. Normally, when
     # Invoke-Expression throws, the error will come the normal way (i.e. $Error) and pass via the
@@ -110,6 +119,6 @@ Write-Host 'Ensuring latest Chocolatey version is installed.'
 Ensure-Chocolatey -ChocoExePath "$choco"
 
 Write-Host "Preparing to install Chocolatey package: $Package."
-Install-Package -ChocoExePath "$choco" -Package $Package -AdditionalOptions $AdditionalOptions
+Install-Package -ChocoExePath "$choco" -Package $Package -ignoreChecksum $ignoreChecksum
 
 Write-Host "`nThe artifact was applied successfully.`n"
