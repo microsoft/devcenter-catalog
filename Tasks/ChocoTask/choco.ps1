@@ -49,23 +49,23 @@ function Install-Package
     param(
         [string] $ChocoExePath,
         [string] $Package,
-        [bool] $ignoreChecksum
+        [bool] $ignoreChecksums
     )
 
     # Split package and version 
     if ($Package.Contains('@')) {
-        $pkgName, $pkgVersion = $Package.Split('@')
-        if ($ignoreChecksum) {
-            $expression = "$ChocoExePath install -y -f --acceptlicense --no-progress --stoponfirstfailure --ignorechecksums $pkgName --version $pkgVersion"
+        $name, $version = $Package.Split('@')
+        if ($ignoreChecksums) {
+            $expression = "$ChocoExePath install -y -f --acceptlicense --no-progress --stoponfirstfailure --ignorechecksums $name --version $version"
         } else {
-            $expression = "$ChocoExePath install -y -f --acceptlicense --no-progress --stoponfirstfailure $pkgName --version $pkgVersion"
+            $expression = "$ChocoExePath install -y -f --acceptlicense --no-progress --stoponfirstfailure $name --version $version"
         }
     } else {
-        $pkgName = $Package
-        if ($ignoreChecksum) {
-            $expression = "$ChocoExePath install -y -f --acceptlicense --no-progress --stoponfirstfailure --ignorechecksums $pkgName"
+        $name = $Package
+        if ($ignoreChecksums) {
+            $expression = "$ChocoExePath install -y -f --acceptlicense --no-progress --stoponfirstfailure --ignorechecksums $name"
         } else {
-            $expression = "$ChocoExePath install -y -f --acceptlicense --no-progress --stoponfirstfailure $pkgName"
+            $expression = "$ChocoExePath install -y -f --acceptlicense --no-progress --stoponfirstfailure $name"
         }
     }
 
@@ -118,6 +118,6 @@ Write-Host 'Ensuring latest Chocolatey version is installed.'
 Ensure-Chocolatey -ChocoExePath "$choco"
 
 Write-Host "Preparing to install Chocolatey package: $Package."
-Install-Package -ChocoExePath "$choco" -Package $Package -ignoreChecksum $ignoreChecksum
+Install-Package -ChocoExePath "$choco" -Package $Package -ignoreChecksums $ignoreChecksums
 
 Write-Host "`nThe artifact was applied successfully.`n"
