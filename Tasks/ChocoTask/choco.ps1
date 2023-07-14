@@ -4,7 +4,7 @@ param(
     [string] $Package,
 
     [Parameter()]
-    [bool] $ignoreChecksum
+    [bool] $ignoreChecksums
 )
 
 ###################################################################################################
@@ -49,8 +49,7 @@ function Install-Package
     param(
         [string] $ChocoExePath,
         [string] $Package,
-        [bool] $ignoreChecksum,
-        [StringSplitOptions] $SplitOptions = [StringSplitOptions]::RemoveEmptyEntries
+        [bool] $ignoreChecksum
     )
 
     # Split package and version 
