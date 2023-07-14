@@ -1,0 +1,19 @@
+name: winget
+command: './main.ps1 -ConfigurationFile {{configurationFile}} -DownloadUrl {{downloadUrl}} -Package {{package}} -RunAsUser {{runAsUser}}'
+inputs:
+  configurationFile:
+    defaultValue: ''
+    type: 'string'
+    required: false
+  downloadUrl:
+    defaultValue: ''
+    type: 'string'
+    required: false
+  package:
+    defaultValue: ''
+    type: 'string'
+    required: false
+  runAsUser:
+    defaultValue: false
+    type: 'boolean'
+    required: false
