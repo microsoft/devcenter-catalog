@@ -1,5 +1,5 @@
 name: choco
-command: "./choco.ps1 -Package {{package}} -Version {{version}} {{#if ignoreChecksums}}--ignore-checksums{{/if}}"
+command: "./choco.ps1 -Package {{package}} -Version {{version}}  -ignoreChecksums {{ignore-checksum-error}}"
 inputs:
   package:
     defaultValue: ""
@@ -9,7 +9,7 @@ inputs:
     defaultValue: ""
     type: "string"
     required: true
-  ignoreChecksums:
+  ignore-checksum-error:
     defaultValue: false
     type: "boolean"
     required: false
