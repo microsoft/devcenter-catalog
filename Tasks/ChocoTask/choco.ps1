@@ -4,6 +4,9 @@ param(
     [string] $Package,
 
     [Parameter()]
+    [string] $Version,
+
+    [Parameter()]
     [bool] $ignoreChecksums
 )
 
@@ -49,24 +52,14 @@ function Install-Package
     param(
         [string] $ChocoExePath,
         [string] $Package,
+        [string] $Version,
         [bool] $ignoreChecksums
     )
 
-    # Split package and version 
-    if ($Package.Contains('@')) {
-        $name, $version = $Package.Split('@')
-        if ($ignoreChecksums) {
-            $expression = "$ChocoExePath install -y -f --acceptlicense --no-progress --stoponfirstfailure --ignorechecksums $name --version $version"
-        } else {
-            $expression = "$ChocoExePath install -y -f --acceptlicense --no-progress --stoponfirstfailure $name --version $version"
-        }
+    if ($ignoreChecksums) {
+        $expression = "$ChocoExePath install -y -f --acceptlicense --no-progress --stoponfirstfailure --ignorechecksums $Package --version $Version"
     } else {
-        $name = $Package
-        if ($ignoreChecksums) {
-            $expression = "$ChocoExePath install -y -f --acceptlicense --no-progress --stoponfirstfailure --ignorechecksums $name"
-        } else {
-            $expression = "$ChocoExePath install -y -f --acceptlicense --no-progress --stoponfirstfailure $name"
-        }
+        $expression = "$ChocoExePath install -y -f --acceptlicense --no-progress --stoponfirstfailure $Package --version $Version"
     }
 
     Execute -Expression $expression
@@ -118,6 +111,6 @@ Write-Host 'Ensuring latest Chocolatey version is installed.'
 Ensure-Chocolatey -ChocoExePath "$choco"
 
 Write-Host "Preparing to install Chocolatey package: $Package."
-Install-Package -ChocoExePath "$choco" -Package $Package -ignoreChecksums $ignoreChecksums
+Install-Package -ChocoExePath "$choco" -Package $Package -Version $Version -ignoreChecksums $ignoreChecksums
 
 Write-Host "`nThe artifact was applied successfully.`n"
