@@ -1,6 +1,6 @@
 # DevCenter Catalog
 
-This repository serves as a default catalog for Dev Center. You may choose to register this repository as a catalog that provides basic building blocks to enable experiences across multiple Dev Center features, including Tasks for Dev Box definitions, and Environment templates for Azure Deployment Environments
+This repository serves as a default catalog for use on Dev Center resources deployed in Microsoft Azure for use in Microsoft Dev Box or Azure Deployment Environments. You may choose to register this repository as a catalog that provides basic building blocks to enable experiences across multiple Dev Center features, including Tasks for Dev Box definitions, and Environment templates for Azure Deployment Environments.
 
 ## Contributing
 
