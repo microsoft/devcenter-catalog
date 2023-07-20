@@ -3,13 +3,14 @@ command: "./choco.ps1 -Package {{package}} -Version {{version}}  -ignoreChecksum
 inputs:
   package:
     defaultValue: ""
-    type: "string"
+    type: string
     required: true
   version:
     defaultValue: ""
-    type: "string"
+    type: string
     required: true
   ignoreChecksums:
     defaultValue: false
-    type: "boolean"
+    type: string
+    allowedValues: ["true", "false"]
     required: false
