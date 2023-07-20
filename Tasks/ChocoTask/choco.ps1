@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [Parameter()]
+    [Parameter(Mandatory=$true)]
     [string] $Package,
 
     [Parameter()]
@@ -9,6 +9,12 @@ param(
     [Parameter()]
     [string] $ignoreChecksums
 )
+
+if (-not $Package) {
+    throw "Package parameter is mandatory. Please provide a value for the Package parameter."
+}
+
+
 
 ###################################################################################################
 #
