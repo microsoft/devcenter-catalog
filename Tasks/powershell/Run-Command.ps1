@@ -1,21 +1,21 @@
 param(
     [Parameter()]
-    [string]$command,
+    [string]$Command,
     [Parameter()]
-    [string]$workingDirectory
+    [string]$WorkingDirectory
  )
 
 # Check if workingDirectory is set and not empty and if so, change to it.
-if ($workingDirectory -and $workingDirectory -ne "") {
+if ($WorkingDirectory -and $WorkingDirectory -ne "") {
     # Check if the working directory exists.
-    if (-not (Test-Path $workingDirectory)) {
+    if (-not (Test-Path $WorkingDirectory)) {
         # Create the working directory if it does not exist.
-        Write-Output "Creating working directory $workingDirectory"
-        New-Item -ItemType Directory -Force -Path $workingDirectory
+        Write-Output "Creating working directory $WorkingDirectory"
+        New-Item -ItemType Directory -Force -Path $WorkingDirectory
     }
 
-    Write-Output "Changing to working directory $workingDirectory"
-    Set-Location $workingDirectory
+    Write-Output "Changing to working directory $WorkingDirectory"
+    Set-Location $WorkingDirectory
 }
 
 # Note we're calling powershell.exe directly, instead
@@ -23,13 +23,13 @@ if ($workingDirectory -and $workingDirectory -ne "") {
 # https://learn.microsoft.com/en-us/powershell/scripting/learn/deep-dives/avoid-using-invoke-expression?view=powershell-7.3
 # Note that this will run powershell.exe
 # even if the system has pwsh.exe.
-Write-Output "Running command $command"
-powershell.exe -Command $command
-$commandExitCode = $LASTEXITCODE
-Write-Output "Command exited with code $commandExitCode"
+Write-Output "Running command $Command"
+powershell.exe -Command $Command
+$CommandExitCode = $LASTEXITCODE
+Write-Output "Command exited with code $CommandExitCode"
 
 # Task powershell scripts should always end with an
 # exit code reported up to the runner agent.
 # This is how the runner agent knows whether the
 # command succeeded or failed.
-exit $commandExitCode
+exit $CommandExitCode

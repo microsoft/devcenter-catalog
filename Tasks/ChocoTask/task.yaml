@@ -1,5 +1,5 @@
 name: choco
-command: "./choco.ps1 -Package {{package}} -Version {{version}}  -ignoreChecksums {{ignoreChecksums}}"
+command: "./Choco.ps1 -Package {{package}} -Version {{version}} -IgnoreChecksums {ignoreChecksums}}"
 inputs:
   package:
     defaultValue: ""
