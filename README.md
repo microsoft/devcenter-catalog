@@ -1,14 +1,6 @@
-# Project
+# DevCenter Catalog
 
-> This repo has been populated by an initial template to help get you started. Please
-> make sure to update the content to build a great experience for community-building.
-
-As the maintainer of this project, please make a few updates:
-
-- Improving this README.MD file to provide a great experience
-- Updating SUPPORT.MD with content about this project's support experience
-- Understanding the security reporting process in SECURITY.MD
-- Remove this section from the README
+This repository serves as a default catalog for use on Dev Center resources deployed in Microsoft Azure for use in Microsoft Dev Box or Azure Deployment Environments. You may choose to register this repository as a catalog that provides basic building blocks to enable experiences across multiple Dev Center features, including Tasks for Dev Box definitions, and Environment templates for Azure Deployment Environments.
 
 ## Contributing
 
