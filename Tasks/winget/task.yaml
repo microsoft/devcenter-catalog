@@ -15,7 +15,8 @@ inputs:
     defaultValue: ''
     type: 'string'
     required: false
-    description: If the winget config yaml file is not stored locally, this parameter can be used to pass the URL to its location.
+    description: | 
+      A publicly accessible URL where the config yaml file is stored. This file will be downloaded to the path given in 'configurationFile'.
   package:
     defaultValue: ''
     type: 'string'
