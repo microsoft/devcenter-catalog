@@ -1,16 +1,29 @@
+# This is a Chocolatey package installation task for Dev Box.
+
 name: choco
+description: Installs a Chocolatey package.
+author: Microsoft Corporation
 command: "./Choco.ps1 -Package {{package}} -Version {{version}} -IgnoreChecksums {ignoreChecksums}}"
 inputs:
   package:
     defaultValue: ""
     type: string
     required: true
+    description: |
+      The name of the Chocolatey package to install.
+      For example, "git".
+      Visit https://chocolatey.org/packages to learn
+      more about Chocolatey packages. 
   version:
     defaultValue: ""
     type: string
-    required: true
+    required: false
+    description: |
+      The version of the Chocolatey package to install.
+      For example, "2.33.0".
   ignoreChecksums:
     defaultValue: false
     type: string
     allowedValues: ["true", "false"]
     required: false
+    description: Whether to ignore checksums when installing the package.
