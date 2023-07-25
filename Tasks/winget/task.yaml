@@ -1,7 +1,7 @@
 # This is a winget package installation task for Dev Box.
 
 name: winget
-description: Installs a package using winget
+description: Applies a winget configuration to the Dev Box.
 author: Microsoft Corporation
 command: './main.ps1 -ConfigurationFile {{configurationFile}} -DownloadUrl {{downloadUrl}} -Package {{package}} -RunAsUser {{runAsUser}}'
 inputs:
@@ -9,23 +9,24 @@ inputs:
     defaultValue: ''
     type: 'string'
     required: false
-    description: |
-      The path to the winget configuration file.
-      For example, "winget.json".
-      Visit https://docs.microsoft.com/windows/package-manager/winget/ to learn
-      more about winget.
+    description: | 
+      The path to the winget config yaml file. The file must be located in the local machine. 
   downloadUrl:
     defaultValue: ''
     type: 'string'
     required: false
-    description: The URL to download the package from.
+    description: If the winget config yaml file is not stored locally, this parameter can be used to pass the URL to its location.
   package:
     defaultValue: ''
     type: 'string'
     required: false
-    description: The name of the package to install.
+    description: |
+      The name of the package to install. This is an alternative way. 
+      If a config yaml file is provided under other parameters, there is no need for the package name.
   runAsUser:
     defaultValue: false
     type: 'boolean'
     required: false
-    description: Whether to run the installation as the current user or as an administrator.
+    description: | 
+      Whether to run the installation as the current user or as an administrator. 
+      If set to true, the installation will run during the user's first login to the machine.

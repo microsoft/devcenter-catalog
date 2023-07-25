@@ -18,9 +18,7 @@ inputs:
     defaultValue: ""
     type: string
     required: false
-    description: |
-      The version of the Chocolatey package to install.
-      For example, "2.33.0".
+    description: The version of the Chocolatey package to install.
   ignoreChecksums:
     defaultValue: false
     type: string
