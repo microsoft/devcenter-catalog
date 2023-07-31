@@ -65,7 +65,7 @@ function Install-Package
         [string] $ChocoExePath,
         [string] $Package,
         [string] $Version,
-        [string] $ignoreChecksums
+        [string] $IgnoreChecksums
     )
 
     $expression = "$ChocoExePath install $Package"
@@ -76,7 +76,7 @@ function Install-Package
 
     $expression = "$expression -y -f --acceptlicense --no-progress --stoponfirstfailure"
     
-    if ($ignoreChecksums -eq "true") {
+    if ($IgnoreChecksums -eq "true") {
         $expression = "$expression --ignorechecksums"
     }
 
@@ -128,6 +128,6 @@ Write-Host 'Ensuring latest Chocolatey version is installed.'
 Ensure-Chocolatey -ChocoExePath "$choco"
 
 Write-Host "Preparing to install Chocolatey package: $Package."
-Install-Package -ChocoExePath "$hoco" -Package $Package -Version $Version -ignoreChecksums $ignoreChecksums
+Install-Package -ChocoExePath "$Choco" -Package $Package -Version $Version -IgnoreChecksums $IgnoreChecksums
 
 Write-Host "`nThe artifact was applied successfully.`n"
