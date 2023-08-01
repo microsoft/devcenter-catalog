@@ -7,7 +7,7 @@ param(
     [string] $Version,
  
     [Parameter()]
-    [string] $ignoreChecksums
+    [string] $IgnoreChecksums
 )
 
 if (-not $Package) {
@@ -23,7 +23,7 @@ if (-not $Package) {
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 # Expected path of the choco.exe file.
-$choco = "$Env:ProgramData/chocolatey/choco.exe"
+$Choco = "$Env:ProgramData/chocolatey/choco.exe"
 
 ###################################################################################################
 #
