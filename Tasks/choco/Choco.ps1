@@ -35,7 +35,7 @@ function Ensure-Chocolatey
     [CmdletBinding()]
     param(
         [string] $ChocoExePath
-    ) 
+    )
 
     if (-not (Test-Path "$ChocoExePath"))
     {
@@ -44,7 +44,7 @@ function Ensure-Chocolatey
         Invoke-WebRequest -Uri 'https://chocolatey.org/install.ps1' -OutFile $installScriptPath
 
         try {
-            powershell.exe -NoProfile -ExecutionPolicy Bypass -File $installScriptPath
+            Execute -File $installScriptPath
         } finally {
             Remove-Item $installScriptPath
         }
@@ -85,7 +85,7 @@ function Execute
 {
     [CmdletBinding()]
     param(
-        $Expression
+        $File
     )
 
     # Note we're calling powershell.exe directly, instead
@@ -93,7 +93,7 @@ function Execute
     # https://learn.microsoft.com/en-us/powershell/scripting/learn/deep-dives/avoid-using-invoke-expression?view=powershell-7.3
     # Note that this will run powershell.exe
     # even if the system has pwsh.exe.
-    $process = Start-Process powershell.exe -ArgumentList "-Command $Expression" -NoNewWindow -PassThru -Wait
+    $process = Start-Process powershell.exe -ArgumentList "-File $File" -NoProfile -ExecutionPolicy Bypass -File
     $expError = $process.ExitCode.Exception
     
     # This check allows us to capture cases where the command we execute exits with an error code.
@@ -123,7 +123,7 @@ function Execute
 #
 
 Write-Host 'Ensuring latest Chocolatey version is installed.'
-Ensure-Chocolatey -ChocoExePath "$choco"
+Ensure-Chocolatey -ChocoExePath "$Choco"
 
 Write-Host "Preparing to install Chocolatey package: $Package."
 Install-Package -ChocoExePath "$Choco" -Package $Package -Version $Version -IgnoreChecksums $IgnoreChecksums
