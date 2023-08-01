@@ -40,7 +40,7 @@ function Ensure-Chocolatey
     if (-not (Test-Path "$ChocoExePath"))
     {
         Set-ExecutionPolicy Bypass -Scope Process -Force
-        $installScriptPath = Join-Path $env:TEMP "Choco-Install.ps1"
+        $installScriptPath = [System.IO.Path]::GetTempFileName() + ".ps1"
         Invoke-WebRequest -Uri 'https://chocolatey.org/install.ps1' -OutFile $installScriptPath
 
         try {
@@ -93,7 +93,7 @@ function Execute
     # https://learn.microsoft.com/en-us/powershell/scripting/learn/deep-dives/avoid-using-invoke-expression?view=powershell-7.3
     # Note that this will run powershell.exe
     # even if the system has pwsh.exe.
-    $process = Start-Process powershell.exe -ArgumentList "-File $File" -NoProfile -ExecutionPolicy Bypass -File
+    $process = Start-Process powershell.exe -ArgumentList "-File $File -NoProfile -ExecutionPolicy Bypass"
     $expError = $process.ExitCode.Exception
     
     # This check allows us to capture cases where the command we execute exits with an error code.
