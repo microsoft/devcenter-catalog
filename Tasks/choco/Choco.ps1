@@ -10,8 +10,6 @@ param(
     [string] $ignoreChecksums
 )
 
-Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1
-
 if (-not $Package) {
     throw "Package parameter is mandatory. Please provide a value for the Package parameter."
 }
