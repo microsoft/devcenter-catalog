@@ -78,7 +78,17 @@ function Install-Package
         $expression = "$expression --ignorechecksums"
     }
 
-    powershell.exe $expression
+    Set-ExecutionPolicy Bypass -Scope Process -Force
+    $packageScriptPath = [System.IO.Path]::GetTempFileName() + ".ps1"
+    Set-Content -Value $expression -Path $packageScriptPath
+        
+    Execute -File $packageScriptPath
+
+    # Check if the package installation failed
+    if ($exitCode -ne 0) {
+        Write-Error "Package installation failed"
+        break
+    }
 }
 
 function Execute
@@ -95,7 +105,7 @@ function Execute
     # even if the system has pwsh.exe.
     $process = Start-Process powershell.exe -ArgumentList "-File $File -NoNewWindow -PassThru -Wait -NoProfile -ExecutionPolicy Bypass"
     $expError = $process.ExitCode.Exception
-    
+
     # This check allows us to capture cases where the command we execute exits with an error code.
     # In that case, we do want to throw an exception with whatever is in stderr. Normally, when
     # Invoke-Expression throws, the error will come the normal way (i.e. $Error) and pass via the
