@@ -103,7 +103,7 @@ function Execute
     # https://learn.microsoft.com/en-us/powershell/scripting/learn/deep-dives/avoid-using-invoke-expression?view=powershell-7.3
     # Note that this will run powershell.exe
     # even if the system has pwsh.exe.
-    $process = Start-Process powershell.exe -ArgumentList "-File $File -NoNewWindow -PassThru -Wait -NoProfile -ExecutionPolicy Bypass" -Wait -PassThru 
+    $process = Start-Process powershell.exe -ArgumentList "-File $File -NoProfile -ExecutionPolicy Bypass" -NoNewWindow -PassThru -Wait 
     $expError = $process.ExitCode.Exception
 
     # This check allows us to capture cases where the command we execute exits with an error code.
