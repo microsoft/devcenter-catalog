@@ -78,17 +78,15 @@ function Install-Package
         $expression = "$expression --ignorechecksums"
     }
 
+    $expression = "$expression `nexit `$LASTEXITCODE"
+
     Set-ExecutionPolicy Bypass -Scope Process -Force
     $packageScriptPath = [System.IO.Path]::GetTempFileName() + ".ps1"
     Set-Content -Value $expression -Path $packageScriptPath
-        
-    Execute -File $packageScriptPath
+    Write-Host "File path $packageScriptPath"
 
-    # Check if the package installation failed
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "Package installation failed"
-        break
-    }
+    Execute -File $packageScriptPath
+    Remove-Item $packageScriptPath
 }
 
 function Execute
@@ -103,16 +101,18 @@ function Execute
     # https://learn.microsoft.com/en-us/powershell/scripting/learn/deep-dives/avoid-using-invoke-expression?view=powershell-7.3
     # Note that this will run powershell.exe
     # even if the system has pwsh.exe.
-    $process = Start-Process powershell.exe -ArgumentList "-File $File -NoProfile -ExecutionPolicy Bypass" -NoNewWindow -PassThru -Wait 
-    $expError = $process.ExitCode.Exception
+    powershell.exe -File $File -NoProfile -NonInteractive -NoLogo
+
+    # capture the exit code from the process
+    $processExitCode = $LASTEXITCODE
 
     # This check allows us to capture cases where the command we execute exits with an error code.
     # In that case, we do want to throw an exception with whatever is in stderr. Normally, when
     # Invoke-Expression throws, the error will come the normal way (i.e. $Error) and pass via the
     # catch below.
-    if ($process.ExitCode -or $expError)
+    if ($processExitCode -or $expError)
     {
-        if ($process.ExitCode -eq 3010)
+        if ($processExitCode -eq 3010)
         {
             # Expected condition. The recent changes indicate a reboot is necessary. Please reboot at your earliest convenience.
         }
@@ -122,7 +122,8 @@ function Execute
         }
         else
         {
-            throw "Installation failed ($LastExitCode). Please see the Chocolatey logs in %ALLUSERSPROFILE%\chocolatey\logs folder for details."
+            throw "Installation failed with exit code: $processExitCode. Please see the Chocolatey logs in %ALLUSERSPROFILE%\chocolatey\logs folder for details."
+            break
         }
     }
 }
