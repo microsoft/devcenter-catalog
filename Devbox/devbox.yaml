@@ -1,0 +1,11 @@
+name: choco-test
+image: microsoftwindowsdesktop_windows-ent-cpc_win11-22h2-ent-cpc-m365@1.0.0
+hostInformation: general_a_8c32gb256ssd_v1
+supportsHibernation: false
+setupTasks:
+  - task: powershell
+    inputs:
+      command: echo "Testing Powershell Task" >> C:\\powershell-test.txt
+  - task: choco
+    inputs:
+        package: notepadplusplus
