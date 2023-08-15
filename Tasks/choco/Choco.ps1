@@ -101,7 +101,7 @@ function Execute
     # https://learn.microsoft.com/en-us/powershell/scripting/learn/deep-dives/avoid-using-invoke-expression?view=powershell-7.3
     # Note that this will run powershell.exe
     # even if the system has pwsh.exe.
-    powershell.exe -File $File -NoProfile -NonInteractive -NoLogo
+    powershell.exe -File $File
 
     # capture the exit code from the process
     $processExitCode = $LASTEXITCODE
