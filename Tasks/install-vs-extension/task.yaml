@@ -10,6 +10,12 @@ inputs:
     required: true
     description: |
       The name of the Visual Studio extension to install.
-      For example, "GitHub.copilotvs".
       Visit https://marketplace.visualstudio.com to learn
       more about Visual Studio extensions.
+documentation:
+  notes: This task is used to install a Visual Studio extension.
+  examples:
+    - task: install-vs-extension
+      description: Install GitHub Copilot
+      inputs:
+        marketplaceItemName: GitHub.copilotvs

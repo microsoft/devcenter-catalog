@@ -24,3 +24,15 @@ inputs:
     type: boolean
     required: false
     description: Whether to ignore checksums when installing the package.
+documentation:
+  notes: This task is used to install a Chocolatey package.
+  examples:
+    - task: choco
+      description: install OracleJDK 17.0.2
+      inputs:
+        package: oraclejdk
+        version: 17.0.2
+    - task: choco
+      description: install notepad++
+      inputs:
+        package: notepadplusplus
