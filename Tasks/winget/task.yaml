@@ -45,6 +45,6 @@ documentation:
     - task: winget
       description: Apply a winget configuration file, downloading from a public URL to the specified path, running as the user
       inputs:
-        downloadUrl: 'https://raw.githubusercontent.com/oliverlabs/winget-dsc-examples/main/vscode.dsc.yaml'
-        configurationFile: 'C:\WinGetConfig\vscode.dsc.yaml'
+        downloadUrl: 'https://raw.githubusercontent.com/microsoft/devhome/main/sampleConfigurations/microsoft/vscode/configuration.dsc.yaml'
+        configurationFile: 'C:\WinGetConfig\configuration.dsc.yaml'
         runAsUser: true
