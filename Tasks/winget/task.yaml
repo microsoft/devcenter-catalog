@@ -31,3 +31,20 @@ inputs:
     description: | 
       Whether to run the installation as the current user or as an administrator. 
       If set to true, the installation will run during the user's first login to the machine.
+documentation:
+  notes: This task allows installing packages via winget, or applying a winget configuration file.
+  examples:
+    - task: winget
+      description: Install a package via winget
+      inputs:
+        package: git
+    - task: winget
+      description: Apply a winget configuration file that's already present on the machine
+      inputs:
+        configurationFile: 'C:\WinGetConfig\winget.yaml'
+    - task: winget
+      description: Apply a winget configuration file, downloading from a public URL to the specified path, running as the user
+      inputs:
+        downloadUrl: 'https://raw.githubusercontent.com/microsoft/devhome/main/sampleConfigurations/microsoft/vscode/configuration.dsc.yaml'
+        configurationFile: 'C:\WinGetConfig\configuration.dsc.yaml'
+        runAsUser: true
