@@ -1,0 +1,11 @@
+name: VSCodeAndNode
+image: microsoftwindowsdesktop_windows-ent-cpc_win11-21h2-ent-cpc-m365
+hostInformation: general_i_8c32gb512ssd_v2
+setupTasks:
+  - task: winget
+    inputs:
+      package: Microsoft.VisualStudioCode.Insiders
+  - task: winget
+    inputs:
+      package: OpenJS.NodeJS.LTS
+      version: 16.20.0
