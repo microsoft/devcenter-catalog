@@ -1,0 +1,41 @@
+# This is a git repository cloning task for Dev Box
+
+name: git-clone-repository-on-login
+description: Clones a git repository on first user login.
+author: Microsoft Corporation
+command: ./main.ps1 -RepositoryUrl {{ repositoryUrl }} -Directory {{ directory }} -Branch {{ branch }}
+inputs:
+  repositoryUrl:
+    defaultValue: ''
+    type: string
+    required: true
+    description: The URL of the repository to clone.
+  directory:
+    defaultValue: C:\Workspaces
+    type: string
+    required: false
+    description: |
+      The directory under which the repository will be cloned. This is the
+      equivalent of the working directory under which the git command will
+      execute.
+  branch:
+    defaultValue: ''
+    type: string
+    required: false
+    description: The branch to clone.
+documentation:
+  notes: |
+    This task allows you to clone a repository the first time a user logs
+    into a Dev Box.
+  examples:
+    - task: git-clone-repository-on-login
+      description: Clone this repository into C:\Workspaces
+      inputs:
+        url: https://github.com/microsoft/calculator
+        directory: C:\Workspaces
+    - task: git-clone-repository-on-login
+      description: Clone this repository's feature/winui2.6 branch into C:\Workspaces
+      inputs:
+        url: https://github.com/microsoft/calculator
+        directory: C:\Workspaces
+        branch: feature/winui2.6
