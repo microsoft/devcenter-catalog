@@ -73,6 +73,10 @@ function InstallWinGet {
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 }
 
+function AppendToUserScript($content) {
+    Add-Content -Path "$($CustomizationScriptsDir)\$($RunAsUserScript)" -Value $content
+}
+
 # install git if it's not already installed
 if (!(Get-Command git -ErrorAction SilentlyContinue)) {
     # if winget is available, use it to install git
@@ -94,9 +98,16 @@ if (!(Test-Path -PathType Leaf "$($CustomizationScriptsDir)\$($LockFile)")) {
     SetupScheduledTasks
 }
 
-Add-Content -Path "$($CustomizationScriptsDir)\$($RunAsUserScript)" -Value "pushd $($Directory)"
-Add-Content -Path "$($CustomizationScriptsDir)\$($RunAsUserScript)" -Value "git clone $($RepositoryUrl)"
+# make directory if it doesn't exist
+AppendToUserScript "pushd C:\"
+AppendToUserScript "if (!(Test-Path -PathType Container '$($Directory)')) {"
+AppendToUserScript "    New-Item -Path '$($Directory)' -ItemType Directory"
+AppendToUserScript "}"
+
+AppendToUserScript "pushd $($Directory)"
+AppendToUserScript "git clone $($RepositoryUrl)"
 if ($Branch) {
-    Add-Content -Path "$($CustomizationScriptsDir)\$($RunAsUserScript)" -Value "git checkout $($Branch)"
+    AppendToUserScript "git checkout $($Branch)"
 }
-Add-Content -Path "$($CustomizationScriptsDir)\$($RunAsUserScript)" -Value "popd"
+AppendToUserScript "popd"
+AppendToUserScript "popd"
