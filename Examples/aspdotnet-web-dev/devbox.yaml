@@ -11,8 +11,8 @@ setupTasks:
   - task: powershell
     inputs:
       command: 'git clone https://github.com/OrchardCMS/OrchardCore.git'
-      workingDirectory: 'C:\Projects'
+      workingDirectory: 'C:\\Projects'
   - task: powershell
     inputs:
       command: dotnet build
-      workingDirectory: 'C:\Projects'
+      workingDirectory: 'C:\\Projects'
