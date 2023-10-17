@@ -61,6 +61,15 @@ function SetupScheduledTasks {
     $TaskFolder = $ShedService.GetFolder("\")
     $TaskFolder.RegisterTaskDefinition("$($RunAsUserTask)", $Task , 6, "Users", $null, 4)
 }
+
+function InstallPS7 {
+    $code = Invoke-RestMethod -Uri https://aka.ms/install-powershell.ps1
+    $null = New-Item -Path function:Install-PowerShell -Value $code
+    Install-PowerShell -UseMSI -Quiet
+    # Need to update the path post install
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+}
+
 function InstallWinGet {
     Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope AllUsers
     Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
@@ -89,6 +98,7 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
     }
     else {
         # if neither winget nor choco are available, install winget and use that to install git
+        InstallPS7
         InstallWinGet
         winget install --id Git.Git -e --source winget
     }
