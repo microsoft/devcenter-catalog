@@ -4,7 +4,9 @@ param (
     [Parameter()]
     [string]$Directory,
     [Parameter()]
-    [string]$Branch
+    [string]$Branch,
+    [Parameter()]
+    [string]$Pat
 )
 
 
@@ -115,7 +117,12 @@ AppendToUserScript "    New-Item -Path '$($Directory)' -ItemType Directory"
 AppendToUserScript "}"
 
 AppendToUserScript "pushd $($Directory)"
-AppendToUserScript "git clone $($RepositoryUrl)"
+
+$patConfig = if ($Pat) 
+    {"-c http.extraHeader=""Authorization: Basic " + [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes("user:$Pat")) + """"}
+    else {""}
+
+AppendToUserScript "git $patConfig clone $($RepositoryUrl)"
 if ($Branch) {
     AppendToUserScript "git checkout $($Branch)"
 }

@@ -23,6 +23,11 @@ inputs:
     type: string
     required: false
     description: The branch to clone.
+  pat:
+    defaultValue: ''
+    type: string
+    required: false
+    description: The PAT token having access for cloning the repository.
 documentation:
   notes: |
     This task allows you to clone a repository the first time a user logs
