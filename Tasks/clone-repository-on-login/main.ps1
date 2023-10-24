@@ -70,7 +70,6 @@ function InstallPS7 {
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 }
 
-$installed_winget = $false
 function InstallWinGet {
     Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope AllUsers
     Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
@@ -78,7 +77,6 @@ function InstallWinGet {
     Install-Module Microsoft.WinGet.Client -Scope AllUsers
 
     pwsh.exe -MTA -Command "Install-Module Microsoft.WinGet.Configuration -AllowPrerelease -Scope AllUsers"
-    $installed_winget = $true
 }
 
 function AppendToUserScript($content) {
@@ -86,6 +84,7 @@ function AppendToUserScript($content) {
 }
 
 # install git if it's not already installed
+$installed_winget = $false
 if (!(Get-Command git -ErrorAction SilentlyContinue)) {
     # if winget is available, use it to install git
     if (Get-Command winget -ErrorAction SilentlyContinue) {
@@ -99,6 +98,7 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
         # if neither winget nor choco are available, install winget and use that to install git
         InstallPS7
         InstallWinGet
+        $installed_winget = $true
         Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="pwsh.exe -MTA -Command `"Install-WinGetPackage -Id Git.Git`""}
     }
 }
