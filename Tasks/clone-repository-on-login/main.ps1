@@ -70,16 +70,15 @@ function InstallPS7 {
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 }
 
+$installed_winget = $false
 function InstallWinGet {
     Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope AllUsers
     Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
 
     Install-Module Microsoft.WinGet.Client -Scope AllUsers
-    Add-Content -Path "$($CustomizationScriptsDir)\$($RunAsUserScript)" -Value "Repair-WinGetPackageManager -Latest"
 
     pwsh.exe -MTA -Command "Install-Module Microsoft.WinGet.Configuration -AllowPrerelease -Scope AllUsers"
-    # Need to update the path post install
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+    $installed_winget = $true
 }
 
 function AppendToUserScript($content) {
@@ -100,7 +99,7 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
         # if neither winget nor choco are available, install winget and use that to install git
         InstallPS7
         InstallWinGet
-        winget install --id Git.Git -e --source winget
+        Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="pwsh.exe -MTA -Command `"Install-WinGetPackage -Id Git.Git`""}
     }
 }
 
@@ -108,8 +107,14 @@ if (!(Test-Path -PathType Leaf "$($CustomizationScriptsDir)\$($LockFile)")) {
     SetupScheduledTasks
 }
 
-# make directory if it doesn't exist
+
 AppendToUserScript "pushd C:\"
+if ($installed_winget)
+{
+    AppendToUserScript "Repair-WinGetPackageManager -Latest"
+}
+
+# make directory if it doesn't exist
 AppendToUserScript "if (!(Test-Path -PathType Container '$($Directory)')) {"
 AppendToUserScript "    New-Item -Path '$($Directory)' -ItemType Directory"
 AppendToUserScript "}"
