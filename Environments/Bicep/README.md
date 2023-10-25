@@ -5,8 +5,8 @@ This template folder contains a suite of templates deployed through Bicep, a dec
 ### What will be deployed?
 
 You can deploy the following test templates to ADE:
-[AppConfig](./AppConfig/appconfig.bicep) Deploys an App Configuration resource.
-[LinkedTemplate](./LinkedTemplate/main.bicep) Offers an example of using Linked Bicep templates for ADE, where the template deploys and App Configuration resource and a Storage Account.
+- [AppConfig](./AppConfig/appconfig.bicep) Deploys an App Configuration resource.
+- [LinkedTemplate](./LinkedTemplate/main.bicep) Offers an example of using Linked Bicep templates for ADE, where the template deploys and App Configuration resource and a Storage Account.
 
 ### Learn more about Bicep
 
