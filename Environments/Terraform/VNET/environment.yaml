@@ -1,0 +1,14 @@
+name: VNET
+summary: Basic Terraform example
+description: Deploys an environment using Terraform containing a resource group
+runner: Terraform
+templatePath: main.tf
+parameters: 
+- id: "name"
+  name: "Name"
+  type: "string"
+  required: true
+- id: "location"
+  name: "Location"
+  default: "centralus"
+  type: "string"
