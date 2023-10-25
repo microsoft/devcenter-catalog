@@ -1,0 +1,27 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.4.451.19169",
+      "templateHash": "2847637193069812520"
+    }
+  },
+  "functions": [],
+  "variables": {
+  },
+  "resources": [
+    {
+       "type": "Microsoft.Storage/storageAccounts",
+       "apiVersion": "2018-11-01",
+       "name": "storagetest",
+       "location": "westus",
+       "sku":{
+         "name": "Standard_LRS"
+       },
+       "kind": "Storage",
+       "properties": {}
+    }
+  ]
+}
