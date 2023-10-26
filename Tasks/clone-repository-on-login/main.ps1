@@ -89,17 +89,20 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
     # if winget is available, use it to install git
     if (Get-Command winget -ErrorAction SilentlyContinue) {
         winget install --id Git.Git -e --source winget
+        Write-Host "'winget install --id Git.Git -e --source winget' exited with code: $($LASTEXITCODE)"
     }
     # if choco is available, use it to install git
     elseif (Get-Command choco -ErrorAction SilentlyContinue) {
         choco install git -y
+        Write-Host "'choco install git -y' exited with code: $($LASTEXITCODE)"
     }
     else {
         # if neither winget nor choco are available, install winget and use that to install git
         InstallPS7
         InstallWinGet
         $installed_winget = $true
-        Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="pwsh.exe -MTA -Command `"Install-WinGetPackage -Id Git.Git`""}
+        pwsh.exe -MTA -Command "Install-WinGetPackage -Id Git.Git"
+        Write-Host "'Install-WinGetPackage -Id Git.Git' exited with code: $($LASTEXITCODE)"
     }
 }
 
