@@ -110,22 +110,35 @@ if (!(Test-Path -PathType Leaf "$($CustomizationScriptsDir)\$($LockFile)")) {
     SetupScheduledTasks
 }
 
+# Write intent to output stream
+AppendToUserScript "Write-Host 'Cloning repository: $($RepositoryUrl) to directory: $($Directory)'"
+if ($Branch) {
+    AppendToUserScript "Write-Host 'Using branch: $($Branch)'"
+}
 
-AppendToUserScript "pushd C:\"
+# Capture output streams
+AppendToUserScript "&{"
+
+# Work from C:\
+AppendToUserScript "  pushd C:\"
 if ($installed_winget)
 {
-    AppendToUserScript "Repair-WinGetPackageManager -Latest"
+    AppendToUserScript "  Repair-WinGetPackageManager -Latest"
 }
 
 # make directory if it doesn't exist
-AppendToUserScript "if (!(Test-Path -PathType Container '$($Directory)')) {"
-AppendToUserScript "    New-Item -Path '$($Directory)' -ItemType Directory"
-AppendToUserScript "}"
+AppendToUserScript "  if (!(Test-Path -PathType Container '$($Directory)')) {"
+AppendToUserScript "      New-Item -Path '$($Directory)' -ItemType Directory"
+AppendToUserScript "  }"
 
-AppendToUserScript "pushd $($Directory)"
-AppendToUserScript "git clone $($RepositoryUrl)"
+# Work from specified directory, clone the repo and change branch if needed
+AppendToUserScript "  pushd $($Directory)"
+AppendToUserScript "  git clone $($RepositoryUrl)"
 if ($Branch) {
-    AppendToUserScript "git checkout $($Branch)"
+    AppendToUserScript "  git checkout $($Branch)"
 }
-AppendToUserScript "popd"
-AppendToUserScript "popd"
+AppendToUserScript "  popd"
+AppendToUserScript "  popd"
+
+# Send output streams to log file
+AppendToUserScript "} *>> $env:TEMP\git-cloning.log"
