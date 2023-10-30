@@ -16,6 +16,7 @@ $RunAsUserTask = "DevBoxCustomizations"
 $CleanupTask = "DevBoxCustomizationsCleanup"
 
 function SetupScheduledTasks {
+    Write-Host "Setting up scheduled tasks"
     if (!(Test-Path -PathType Container $CustomizationScriptsDir)) {
         New-Item -Path $CustomizationScriptsDir -ItemType Directory
         New-Item -Path "$($CustomizationScriptsDir)\$($LockFile)" -ItemType File
@@ -60,23 +61,34 @@ function SetupScheduledTasks {
 
     $TaskFolder = $ShedService.GetFolder("\")
     $TaskFolder.RegisterTaskDefinition("$($RunAsUserTask)", $Task , 6, "Users", $null, 4)
+    Write-Host "Done setting up scheduled tasks"
 }
 
 function InstallPS7 {
-    $code = Invoke-RestMethod -Uri https://aka.ms/install-powershell.ps1
-    $null = New-Item -Path function:Install-PowerShell -Value $code
-    Install-PowerShell -UseMSI -Quiet
-    # Need to update the path post install
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+    if (!(Get-Command pwsh -ErrorAction SilentlyContinue)) {
+        Write-Host "Installing PowerShell 7"
+        $code = Invoke-RestMethod -Uri https://aka.ms/install-powershell.ps1
+        $null = New-Item -Path function:Install-PowerShell -Value $code
+        Install-PowerShell -UseMSI -Quiet
+        # Need to update the path post install
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+        Write-Host "Done Installing PowerShell 7"
+    }
+    else
+    {
+        Write-Host "PowerShell 7 is already installed"
+    }
 }
 
 function InstallWinGet {
+    Write-Host "Installing WinGet"
     Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope AllUsers
     Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
 
     Install-Module Microsoft.WinGet.Client -Scope AllUsers
 
     pwsh.exe -MTA -Command "Install-Module Microsoft.WinGet.Configuration -AllowPrerelease -Scope AllUsers"
+    Write-Host "Done Installing WinGet"
 }
 
 function AppendToUserScript($content) {
@@ -106,10 +118,14 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
     }
 }
 
+# install powershell 7
+InstallPS7
+
 if (!(Test-Path -PathType Leaf "$($CustomizationScriptsDir)\$($LockFile)")) {
     SetupScheduledTasks
 }
 
+Write-Host "Writing commands to user script"
 # Write intent to output stream
 AppendToUserScript "Write-Host 'Cloning repository: $($RepositoryUrl) to directory: $($Directory)'"
 if ($Branch) {
@@ -141,4 +157,6 @@ AppendToUserScript "  popd"
 AppendToUserScript "  popd"
 
 # Send output streams to log file
-AppendToUserScript "} *>> $env:TEMP\git-cloning.log"
+AppendToUserScript "} *>> `$env:TEMP\git-cloning.log"
+
+Write-Host "Done writing commands to user script"
