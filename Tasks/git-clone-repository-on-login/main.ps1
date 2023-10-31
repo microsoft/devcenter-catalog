@@ -4,7 +4,9 @@ param (
     [Parameter()]
     [string]$Directory,
     [Parameter()]
-    [string]$Branch
+    [string]$Branch,
+    [Parameter()]
+    [string]$Pat
 )
 
 
@@ -125,6 +127,55 @@ function InstallWinGet {
     Write-Host "Done Installing WinGet"
 }
 
+if ($Pat) {
+    # When a PAT is provided, we'll attempt to clone the repository during provisioning time.
+    # If this fails, we'll try again when the user logs in.
+    Write-Host "Cloning repository: $($RepositoryUrl) to directory: $($Directory)"
+    if ($Branch) {
+        Write-Host "Using branch: $($Branch)"
+    }
+    Push-Location C:\
+    try {
+        if (!(Test-Path -PathType Container $Directory)) {
+            New-Item -Path $Directory -ItemType Directory
+        }
+        Push-Location $Directory
+        try {
+            $authheader = "-c http.extraHeader=""Authorization: Basic " + [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("user:$Pat")) + """"
+            git $authheader clone $RepositoryUrl
+            if ($LASTEXITCODE -ne 0) {
+                throw "git clone exited with code: $($LASTEXITCODE)"
+            }
+            if ($Branch) {
+                git checkout $Branch
+                if ($LASTEXITCODE -ne 0) {
+                    throw "git checkout exited with code: $($LASTEXITCODE)"
+                }
+            }
+            # If the code reaches this point, we've successfully cloned the repository.
+            Write-Host "Successfully cloned repository: $($RepositoryUrl) to directory: $($Directory)"
+            exit 0 #Success!
+        }
+        catch {
+            Write-Error $_.Exception.InnerException.Message -ErrorAction Continue
+            Write-Host "Failed to clone repository: $($RepositoryUrl) to directory: $($Directory), cloning attempt will be queued for user login"
+        }
+        finally {
+            Pop-Location
+        }
+    }
+    catch {
+        Write-Error $_.Exception.InnerException.Message -ErrorAction Continue
+        Write-Host "Failed to create directory: $($Directory), cloning attempt will be queued for user login"
+    }
+    finally {
+        Pop-Location
+    }
+}
+
+# If the code reaches this point, we failed to clone the repository during provisioning time or
+# a PAT was not provided. We'll queue the clone attempt for user login.
+
 function AppendToUserScript {
     Param(
         [Parameter(Position=0, Mandatory=$true)]
@@ -190,7 +241,7 @@ if ($Branch) {
 AppendToUserScript "&{"
 
 # Work from C:\
-AppendToUserScript "  pushd C:\"
+AppendToUserScript "  Push-Location C:\"
 if ($installed_winget) {
     AppendToUserScript "  Repair-WinGetPackageManager -Latest"
 }
@@ -201,13 +252,13 @@ AppendToUserScript "      New-Item -Path '$($Directory)' -ItemType Directory"
 AppendToUserScript "  }"
 
 # Work from specified directory, clone the repo and change branch if needed
-AppendToUserScript "  pushd $($Directory)"
+AppendToUserScript "  Push-Location $($Directory)"
 AppendToUserScript "  git clone $($RepositoryUrl)"
 if ($Branch) {
     AppendToUserScript "  git checkout $($Branch)"
 }
-AppendToUserScript "  popd"
-AppendToUserScript "  popd"
+AppendToUserScript "  Pop-Location"
+AppendToUserScript "  Pop-Location"
 
 # Send output streams to log file
 AppendToUserScript "} *>> `$env:TEMP\git-cloning.log"
