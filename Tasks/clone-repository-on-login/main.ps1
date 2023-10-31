@@ -113,8 +113,18 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
         InstallPS7
         InstallWinGet
         $installed_winget = $true
-        pwsh.exe -MTA -Command "Install-WinGetPackage -Id Git.Git"
-        Write-Host "'Install-WinGetPackage -Id Git.Git' exited with code: $($LASTEXITCODE)"
+        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="pwsh.exe -MTA -Command `"Install-WinGetPackage -Id Git.Git`""}
+        if ($processCreation.ReturnValue -ne 0) {
+            Write-Host "Failed to create process to install git with Install-WinGetPackage, error code $($processCreation.ReturnValue)"
+            exit $processCreation.ReturnValue
+        }
+        $process = Get-Process -Id $processCreation.ProcessId
+        Wait-Process -Id $processCreation.ProcessId -Timeout 300 # 5 minutes
+        Write-Host "'Install-WinGetPackage -Id Git.Git' exited with code: $($process.ExitCode)"
+        if ($process.ExitCode -ne 0) {
+            Write-Host "Failed to install git with Install-WinGetPackage, error code $($process.ExitCode)"
+            exit $process.ExitCode
+        }
     }
 }
 
