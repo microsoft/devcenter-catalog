@@ -65,7 +65,6 @@ function SetupScheduledTasks {
 }
 
 function WithRetry {
-    [CmdletBinding()]
     Param(
         [Parameter(Position=0, Mandatory=$true)]
         [scriptblock]$ScriptBlock,
@@ -110,8 +109,7 @@ function InstallPS7 {
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
         Write-Host "Done Installing PowerShell 7"
     }
-    else
-    {
+    else {
         Write-Host "PowerShell 7 is already installed"
     }
 }
@@ -127,8 +125,13 @@ function InstallWinGet {
     Write-Host "Done Installing WinGet"
 }
 
-function AppendToUserScript($content) {
-    Add-Content -Path "$($CustomizationScriptsDir)\$($RunAsUserScript)" -Value $content
+function AppendToUserScript {
+    Param(
+        [Parameter(Position=0, Mandatory=$true)]
+        [string]$Content
+    )
+
+    Add-Content -Path "$($CustomizationScriptsDir)\$($RunAsUserScript)" -Value $Content
 }
 
 # install git if it's not already installed
@@ -159,7 +162,7 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
         }
         Write-Host "Waiting for Install-WinGetPackage (pid: $($processCreation.ProcessId)) to complete"
         $process = Get-Process -Id $processCreation.ProcessId
-        $handle = $process.Handle # cache process.Handle
+        $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
         $process.WaitForExit()
         Write-Host "'Install-WinGetPackage -Id Git.Git' exited with code: $($process.ExitCode)"
         if ($process.ExitCode -ne 0) {
@@ -188,8 +191,7 @@ AppendToUserScript "&{"
 
 # Work from C:\
 AppendToUserScript "  pushd C:\"
-if ($installed_winget)
-{
+if ($installed_winget) {
     AppendToUserScript "  Repair-WinGetPackageManager -Latest"
 }
 
