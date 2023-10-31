@@ -155,7 +155,7 @@ $patConfig = if ($Pat)
 
 # Work from specified directory, clone the repo and change branch if needed
 AppendToUserScript "  pushd $($Directory)"
-AppendToUserScript "git $patConfig clone $($RepositoryUrl)"
+AppendToUserScript "  git $patConfig clone $($RepositoryUrl)"
 if ($Branch) {
     AppendToUserScript "  git checkout $($Branch)"
 }
