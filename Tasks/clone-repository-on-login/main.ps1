@@ -18,6 +18,7 @@ $RunAsUserTask = "DevBoxCustomizations"
 $CleanupTask = "DevBoxCustomizationsCleanup"
 
 function SetupScheduledTasks {
+    Write-Host "Setting up scheduled tasks"
     if (!(Test-Path -PathType Container $CustomizationScriptsDir)) {
         New-Item -Path $CustomizationScriptsDir -ItemType Directory
         New-Item -Path "$($CustomizationScriptsDir)\$($LockFile)" -ItemType File
@@ -62,26 +63,34 @@ function SetupScheduledTasks {
 
     $TaskFolder = $ShedService.GetFolder("\")
     $TaskFolder.RegisterTaskDefinition("$($RunAsUserTask)", $Task , 6, "Users", $null, 4)
+    Write-Host "Done setting up scheduled tasks"
 }
 
 function InstallPS7 {
-    $code = Invoke-RestMethod -Uri https://aka.ms/install-powershell.ps1
-    $null = New-Item -Path function:Install-PowerShell -Value $code
-    Install-PowerShell -UseMSI -Quiet
-    # Need to update the path post install
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+    if (!(Get-Command pwsh -ErrorAction SilentlyContinue)) {
+        Write-Host "Installing PowerShell 7"
+        $code = Invoke-RestMethod -Uri https://aka.ms/install-powershell.ps1
+        $null = New-Item -Path function:Install-PowerShell -Value $code
+        Install-PowerShell -UseMSI -Quiet
+        # Need to update the path post install
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+        Write-Host "Done Installing PowerShell 7"
+    }
+    else
+    {
+        Write-Host "PowerShell 7 is already installed"
+    }
 }
 
 function InstallWinGet {
+    Write-Host "Installing WinGet"
     Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope AllUsers
     Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
 
     Install-Module Microsoft.WinGet.Client -Scope AllUsers
-    Add-Content -Path "$($CustomizationScriptsDir)\$($RunAsUserScript)" -Value "Repair-WinGetPackageManager -Latest"
 
     pwsh.exe -MTA -Command "Install-Module Microsoft.WinGet.Configuration -AllowPrerelease -Scope AllUsers"
-    # Need to update the path post install
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+    Write-Host "Done Installing WinGet"
 }
 
 function AppendToUserScript($content) {
@@ -89,42 +98,71 @@ function AppendToUserScript($content) {
 }
 
 # install git if it's not already installed
+$installed_winget = $false
 if (!(Get-Command git -ErrorAction SilentlyContinue)) {
     # if winget is available, use it to install git
     if (Get-Command winget -ErrorAction SilentlyContinue) {
         winget install --id Git.Git -e --source winget
+        Write-Host "'winget install --id Git.Git -e --source winget' exited with code: $($LASTEXITCODE)"
     }
     # if choco is available, use it to install git
     elseif (Get-Command choco -ErrorAction SilentlyContinue) {
         choco install git -y
+        Write-Host "'choco install git -y' exited with code: $($LASTEXITCODE)"
     }
     else {
         # if neither winget nor choco are available, install winget and use that to install git
         InstallPS7
         InstallWinGet
-        winget install --id Git.Git -e --source winget
+        $installed_winget = $true
+        pwsh.exe -MTA -Command "Install-WinGetPackage -Id Git.Git"
+        Write-Host "'Install-WinGetPackage -Id Git.Git' exited with code: $($LASTEXITCODE)"
     }
 }
+
+# install powershell 7
+InstallPS7
 
 if (!(Test-Path -PathType Leaf "$($CustomizationScriptsDir)\$($LockFile)")) {
     SetupScheduledTasks
 }
 
-# make directory if it doesn't exist
-AppendToUserScript "pushd C:\"
-AppendToUserScript "if (!(Test-Path -PathType Container '$($Directory)')) {"
-AppendToUserScript "    New-Item -Path '$($Directory)' -ItemType Directory"
-AppendToUserScript "}"
+Write-Host "Writing commands to user script"
+# Write intent to output stream
+AppendToUserScript "Write-Host 'Cloning repository: $($RepositoryUrl) to directory: $($Directory)'"
+if ($Branch) {
+    AppendToUserScript "Write-Host 'Using branch: $($Branch)'"
+}
 
-AppendToUserScript "pushd $($Directory)"
+# Capture output streams
+AppendToUserScript "&{"
+
+# Work from C:\
+AppendToUserScript "  pushd C:\"
+if ($installed_winget)
+{
+    AppendToUserScript "  Repair-WinGetPackageManager -Latest"
+}
+
+# make directory if it doesn't exist
+AppendToUserScript "  if (!(Test-Path -PathType Container '$($Directory)')) {"
+AppendToUserScript "      New-Item -Path '$($Directory)' -ItemType Directory"
+AppendToUserScript "  }"
 
 $patConfig = if ($Pat) 
     {"-c http.extraHeader=""Authorization: Basic " + [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes("user:$Pat")) + """"}
     else {""}
 
+# Work from specified directory, clone the repo and change branch if needed
+AppendToUserScript "  pushd $($Directory)"
 AppendToUserScript "git $patConfig clone $($RepositoryUrl)"
 if ($Branch) {
-    AppendToUserScript "git checkout $($Branch)"
+    AppendToUserScript "  git checkout $($Branch)"
 }
-AppendToUserScript "popd"
-AppendToUserScript "popd"
+AppendToUserScript "  popd"
+AppendToUserScript "  popd"
+
+# Send output streams to log file
+AppendToUserScript "} *>> `$env:TEMP\git-cloning.log"
+
+Write-Host "Done writing commands to user script"
