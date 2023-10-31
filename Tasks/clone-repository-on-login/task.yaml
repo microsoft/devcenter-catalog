@@ -3,7 +3,7 @@
 name: git-clone-repository-on-login
 description: Clones a git repository on first user login.
 author: Microsoft Corporation
-command: ./main.ps1 -RepositoryUrl {{ repositoryUrl }} -Directory {{ directory }} -Branch {{ branch }}
+command: ./main.ps1 -RepositoryUrl {{ repositoryUrl }} -Directory {{ directory }} -Branch {{ branch }} -Pat {{ pat }}
 inputs:
   repositoryUrl:
     defaultValue: ''
