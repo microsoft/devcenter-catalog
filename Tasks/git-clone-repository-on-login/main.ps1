@@ -87,7 +87,7 @@ function WithRetry {
             return
         } catch {
             $lastException = $_
-            Write-Error $_.Exception.InnerException.Message -ErrorAction Continue
+            Write-Error $_
 
             # Sleep for a random amount of time with exponential backoff
             $randomDouble = Get-Random -Minimum 0.0 -Maximum 1.0
@@ -157,7 +157,7 @@ if ($Pat) {
             exit 0 #Success!
         }
         catch {
-            Write-Error $_.Exception.InnerException.Message -ErrorAction Continue
+            Write-Error $_
             Write-Host "Failed to clone repository: $($RepositoryUrl) to directory: $($Directory), cloning attempt will be queued for user login"
         }
         finally {
@@ -165,7 +165,7 @@ if ($Pat) {
         }
     }
     catch {
-        Write-Error $_.Exception.InnerException.Message -ErrorAction Continue
+        Write-Error $_
         Write-Host "Failed to create directory: $($Directory), cloning attempt will be queued for user login"
     }
     finally {
