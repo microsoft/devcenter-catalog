@@ -64,12 +64,48 @@ function SetupScheduledTasks {
     Write-Host "Done setting up scheduled tasks"
 }
 
+function WithRetry {
+    [CmdletBinding()]
+    Param(
+        [Parameter(Position=0, Mandatory=$true)]
+        [scriptblock]$ScriptBlock,
+
+        [Parameter(Position=1, Mandatory=$false)]
+        [int]$Maximum = 5,
+
+        [Parameter(Position=2, Mandatory=$false)]
+        [int]$Delay = 100
+    )
+
+    $iterationCount = 0
+    $lastException = $null
+    do {
+        $iterationCount++
+        try {
+            Invoke-Command -Command $ScriptBlock
+            return
+        } catch {
+            $lastException = $_
+            Write-Error $_.Exception.InnerException.Message -ErrorAction Continue
+
+            # Sleep for a random amount of time with exponential backoff
+            $randomDouble = Get-Random -Minimum 0.0 -Maximum 1.0
+            $k = $randomDouble * ([Math]::Pow(2.0, $iterationCount) - 1.0)
+            Start-Sleep -Milliseconds ($k * $Delay)
+        }
+    } while ($iterationCount -lt $Maximum)
+
+    throw $lastException
+}
+
 function InstallPS7 {
     if (!(Get-Command pwsh -ErrorAction SilentlyContinue)) {
         Write-Host "Installing PowerShell 7"
         $code = Invoke-RestMethod -Uri https://aka.ms/install-powershell.ps1
         $null = New-Item -Path function:Install-PowerShell -Value $code
-        Install-PowerShell -UseMSI -Quiet
+        WithRetry -ScriptBlock {
+            Install-PowerShell -UseMSI -Quiet
+        } -Maximum 5 -Delay 100
         # Need to update the path post install
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
         Write-Host "Done Installing PowerShell 7"
@@ -100,11 +136,13 @@ $installed_winget = $false
 if (!(Get-Command git -ErrorAction SilentlyContinue)) {
     # if winget is available, use it to install git
     if (Get-Command winget -ErrorAction SilentlyContinue) {
+        Write-Host "Installing git with winget"
         winget install --id Git.Git -e --source winget
         Write-Host "'winget install --id Git.Git -e --source winget' exited with code: $($LASTEXITCODE)"
     }
     # if choco is available, use it to install git
     elseif (Get-Command choco -ErrorAction SilentlyContinue) {
+        Write-Host "Installing git with choco"
         choco install git -y
         Write-Host "'choco install git -y' exited with code: $($LASTEXITCODE)"
     }
@@ -113,13 +151,16 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
         InstallPS7
         InstallWinGet
         $installed_winget = $true
-        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="pwsh.exe -MTA -Command `"Install-WinGetPackage -Id Git.Git`""}
+        Write-Host "Installing git with Install-WinGetPackage"
+        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe -MTA -Command `"Install-WinGetPackage -Id Git.Git`""}
         if ($processCreation.ReturnValue -ne 0) {
             Write-Host "Failed to create process to install git with Install-WinGetPackage, error code $($processCreation.ReturnValue)"
             exit $processCreation.ReturnValue
         }
+        Write-Host "Waiting for Install-WinGetPackage (pid: $($processCreation.ProcessId)) to complete"
         $process = Get-Process -Id $processCreation.ProcessId
-        Wait-Process -Id $processCreation.ProcessId -Timeout 300 # 5 minutes
+        $handle = $process.Handle # cache process.Handle
+        $process.WaitForExit()
         Write-Host "'Install-WinGetPackage -Id Git.Git' exited with code: $($process.ExitCode)"
         if ($process.ExitCode -ne 0) {
             Write-Host "Failed to install git with Install-WinGetPackage, error code $($process.ExitCode)"
