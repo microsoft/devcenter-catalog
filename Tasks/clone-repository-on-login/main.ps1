@@ -150,7 +150,7 @@ AppendToUserScript "      New-Item -Path '$($Directory)' -ItemType Directory"
 AppendToUserScript "  }"
 
 $patConfig = if ($Pat) 
-    {"-c http.extraHeader=""Authorization: Basic " + [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes("user:$Pat")) + """"}
+    {"-c http.extraHeader=""Authorization: Basic " + [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("user:$Pat")) + """"}
     else {""}
 
 # Work from specified directory, clone the repo and change branch if needed
