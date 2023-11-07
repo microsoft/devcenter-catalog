@@ -38,11 +38,11 @@ documentation:
     - task: git-clone
       description: Clone this repository into C:\Workspaces
       inputs:
-        url: https://github.com/microsoft/calculator
+        repositoryUrl: https://github.com/microsoft/calculator
         directory: C:\Workspaces
     - task: git-clone
       description: Clone this repository's feature/winui2.6 branch into C:\Workspaces
       inputs:
-        url: https://github.com/microsoft/calculator
+        repositoryUrl: https://github.com/microsoft/calculator
         directory: C:\Workspaces
         branch: feature/winui2.6
