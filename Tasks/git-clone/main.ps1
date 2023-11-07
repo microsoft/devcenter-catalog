@@ -141,16 +141,15 @@ if ($Pat) {
         }
         Push-Location $Directory
         try {
-            $authheader = "-c http.extraHeader=""Authorization: Basic " + [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("user:$Pat")) + """"
-            git $authheader clone $RepositoryUrl
+            $b64pat = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("user:$Pat"))
+            if ($Branch) {
+                git -c http.extraHeader="Authorization: Basic $b64pat" clone -b $Branch $RepositoryUrl
+            }
+            else {
+                git -c http.extraHeader="Authorization: Basic $b64pat" clone $RepositoryUrl
+            }
             if ($LASTEXITCODE -ne 0) {
                 throw "git clone exited with code: $($LASTEXITCODE)"
-            }
-            if ($Branch) {
-                git checkout $Branch
-                if ($LASTEXITCODE -ne 0) {
-                    throw "git checkout exited with code: $($LASTEXITCODE)"
-                }
             }
             # If the code reaches this point, we've successfully cloned the repository.
             Write-Host "Successfully cloned repository: $($RepositoryUrl) to directory: $($Directory)"
@@ -172,6 +171,53 @@ if ($Pat) {
         Pop-Location
     }
 }
+
+# Check if the repository is hosted in GitHub
+if ($RepositoryUrl -match "github.com") {
+    # attempt to clone without credentials
+    Write-Host "Attempting to clone repository: $($RepositoryUrl) to directory: $($Directory) without credentials"
+    if ($Branch) {
+        Write-Host "Using branch: $($Branch)"
+    }
+    Push-Location C:\
+    try {
+        if (!(Test-Path -PathType Container $Directory)) {
+            New-Item -Path $Directory -ItemType Directory
+        }
+        Push-Location $Directory
+        try {
+            if ($Branch) {
+                git clone -b $Branch $RepositoryUrl
+            }
+            else {
+                git clone $RepositoryUrl
+            }
+            if ($LASTEXITCODE -ne 0) {
+                throw "git clone exited with code: $($LASTEXITCODE)"
+            }
+            # If the code reaches this point, we've successfully cloned the repository.
+            Write-Host "Successfully cloned repository: $($RepositoryUrl) to directory: $($Directory)"
+            exit 0 #Success!
+        }
+        catch {
+            Write-Error $_
+            Write-Host "Failed to clone repository: $($RepositoryUrl) to directory: $($Directory), cloning attempt will be queued for user login"
+        }
+        finally {
+            Pop-Location
+        }
+    }
+    catch {
+        Write-Error $_
+        Write-Host "Failed to create directory: $($Directory), cloning attempt will be queued for user login"
+    }
+    finally {
+        Pop-Location
+    }
+
+}
+
+
 
 # If the code reaches this point, we failed to clone the repository during provisioning time or
 # a PAT was not provided. We'll queue the clone attempt for user login.
