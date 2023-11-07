@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=https://github.com/Azure/deployment-environments/releases/download/2022-11-11-preview/manifest.schema.json
+name: Conatiner-App-with-Cosmos
+version: 1.0.0
+summary: Azure Container APP with Cosmos Environment
+description: Deploys an Azure Container App with Cosmos, it is compatible with azd.
+runner: ARM
+templatePath: azuredeploy.json
+
+parameters:
+  - id: environmentName
+    name: environmentName
+    description: 'Name of the Container App.'
+    type: string
+    required: true
+  - id: repoUrl
+    name: repoUrl
+    type: string
+    description: Path the the application source code
+    default: "https://github.com/azure-samples/todo-nodejs-mongo-aca"
+    allowed:
+      - "https://github.com/azure-samples/todo-java-mongo-aca"
+      - "https://github.com/azure-samples/todo-nodejs-mongo-aca"
+      - "https://github.com/azure-samples/todo-python-mongo-aca"
+    
+    
+
