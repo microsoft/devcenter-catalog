@@ -6,14 +6,17 @@ templatePath: main.tf
 parameters: 
 - id: "prefix"
   name: "Prefix"
+  description: "Prefix Convention to add to all created resources' names"
   type: "string"
   required: true
 - id: "postfix"
   name: "Postfix"
+  description: "Postfix Convention to add to all created resources' names"
   type: "string"
   required: true
 - id: "location"
   name: "Location"
+  description: "Azure region to deploy the environment's resources to"
   default: "centralus"
   type: "string"
 - id: "enable_private_endpoints"
