@@ -1,42 +1,34 @@
 {
-  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "$schema":"https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "metadata": {
     "_generator": {
       "name": "bicep",
       "version": "0.21.1.54444",
-      "templateHash": "10809287839753264304"
+      "templateHash": "5508817449258227362"
     }
   },
   "parameters": {
-    "repoUrl": {
+    "runtimeType": {
       "type": "string",
       "allowedValues": [
-          "https://github.com/azure-samples/todo-java-mongo",
-          "https://github.com/azure-samples/todo-nodejs-mongo",
-          "https://github.com/azure-samples/todo-python-mongo"
-      ],
+        "python",
+        "nodejs",
+        "java"
+    ],
       "metadata": {
-        "description": "URL of the GitHub repository containing the application code"
-      }
-    },
-    "environmentName": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 64,
-      "metadata": {
-        "description": "Name of the the environment which is used to generate a short unique hash used in all resources."
+        "description": "runtimeType of the Conatiner App runtime,eg python,nodejs,java."
       }
     },
     "location": {
       "type": "string",
       "defaultValue": "[resourceGroup().location]",
+      "minLength": 1,
       "metadata": {
         "description": "Primary location for all resources"
-      },
-      "minLength": 1
+      }
     },
-    "apiServiceName": {
+    "apiContainerAppName": {
       "type": "string",
       "defaultValue": ""
     },
@@ -48,7 +40,11 @@
       "type": "string",
       "defaultValue": ""
     },
-    "appServicePlanName": {
+    "containerAppsEnvironmentName": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "containerRegistryName": {
       "type": "string",
       "defaultValue": ""
     },
@@ -68,13 +64,21 @@
       "type": "string",
       "defaultValue": ""
     },
-    "webServiceName": {
+    "webContainerAppName": {
       "type": "string",
       "defaultValue": ""
     },
     "apimServiceName": {
       "type": "string",
       "defaultValue": ""
+    },
+    "apiAppExists": {
+      "type": "bool",
+      "defaultValue": false
+    },
+    "webAppExists": {
+      "type": "bool",
+      "defaultValue": false
     },
     "useAPIM": {
       "type": "bool",
@@ -89,7 +93,21 @@
       "metadata": {
         "description": "Id of the user or app to assign application roles"
       }
+    },
+    "webApiBaseUrl": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The base URL used by the web service for sending API requests"
+      }
+    },
+    "repoUrl": {
+    "type": "string",
+    "defaultValue": "",
+    "metadata": {
+      "description": "URL of the GitHub repository containing the application code"
     }
+  }
   },
   "variables": {
     "$fxv#0": {
@@ -228,36 +246,39 @@
       "webStaticSites": "stapp-"
     },
     "abbrs": "[variables('$fxv#0')]",
-    "resourceToken": "[toLower(uniqueString(subscription().id, parameters('environmentName'), parameters('location')))]",
+    "resourceToken": "[toLower(uniqueString(subscription().id, parameters('runtimeType'), parameters('location')))]",
     "tags": {
-      "azd-env-name": "[parameters('environmentName')]"
+      "azd-env-name": "[parameters('runtimeType')]"
     },
-    "runtimeName":"[if(equals(parameters('repoUrl'), 'https://github.com/azure-samples/todo-java-mongo'), 'java', if(equals(parameters('repoUrl'), 'https://github.com/azure-samples/todo-python-mongo'), 'python','node'))]",
-    "runtimeVersion":"[if(equals(parameters('repoUrl'), 'https://github.com/azure-samples/todo-java-mongo'), '17-java17', if(equals(parameters('repoUrl'), 'https://github.com/azure-samples/todo-python-mongo'), '3.10','18-lts'))]"
+    "apiContainerAppNameOrDefault": "[format('{0}web-{1}', variables('abbrs').appContainerApps, variables('resourceToken'))]"
   },
   "resources": [
-        {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
-      "name": "web",
-            "properties": {
+      "name": "container-apps",
+      "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
         },
         "mode": "Incremental",
         "parameters": {
-          "name": "[if(not(empty(parameters('webServiceName'))), createObject('value', parameters('webServiceName')), createObject('value', format('{0}web-{1}', variables('abbrs').webSitesAppService, variables('resourceToken'))))]",
+          "name": {
+            "value": "app"
+          },
           "location": {
             "value": "[parameters('location')]"
           },
           "tags": {
             "value": "[variables('tags')]"
           },
+          "containerAppsEnvironmentName": "[if(not(empty(parameters('containerAppsEnvironmentName'))), createObject('value', parameters('containerAppsEnvironmentName')), createObject('value', format('{0}{1}', variables('abbrs').appManagedEnvironments, variables('resourceToken'))))]",
+          "containerRegistryName": "[if(not(empty(parameters('containerRegistryName'))), createObject('value', parameters('containerRegistryName')), createObject('value', format('{0}{1}', variables('abbrs').containerRegistryRegistries, variables('resourceToken'))))]",
+          "logAnalyticsWorkspaceName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'monitoring'), '2022-09-01').outputs.logAnalyticsWorkspaceName.value]"
+          },
           "applicationInsightsName": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'monitoring'), '2022-09-01').outputs.applicationInsightsName.value]"
-          },
-          "appServicePlanId": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appserviceplan'), '2022-09-01').outputs.id.value]"
           }
         },
         "template": {
@@ -267,8 +288,9 @@
             "_generator": {
               "name": "bicep",
               "version": "0.21.1.54444",
-              "templateHash": "17255664220697257765"
-            }
+              "templateHash": "15723988335963267943"
+            },
+            "description": "Creates an Azure Container Registry and an Azure Container Apps environment."
           },
           "parameters": {
             "name": {
@@ -282,27 +304,29 @@
               "type": "object",
               "defaultValue": {}
             },
-            "serviceName": {
-              "type": "string",
-              "defaultValue": "web"
+            "containerAppsEnvironmentName": {
+              "type": "string"
             },
-            "appCommandLine": {
+            "containerRegistryName": {
+              "type": "string"
+            },
+            "containerRegistryResourceGroupName": {
               "type": "string",
-              "defaultValue": "./entrypoint.sh -o ./env-config.js && pm2 serve /home/site/wwwroot --no-daemon --spa"
+              "defaultValue": ""
+            },
+            "logAnalyticsWorkspaceName": {
+              "type": "string"
             },
             "applicationInsightsName": {
               "type": "string",
               "defaultValue": ""
-            },
-            "appServicePlanId": {
-              "type": "string"
             }
           },
           "resources": [
             {
               "type": "Microsoft.Resources/deployments",
               "apiVersion": "2022-09-01",
-              "name": "[format('{0}-deployment', parameters('name'))]",
+              "name": "[format('{0}-container-apps-environment', parameters('name'))]",
               "properties": {
                 "expressionEvaluationOptions": {
                   "scope": "inner"
@@ -310,28 +334,19 @@
                 "mode": "Incremental",
                 "parameters": {
                   "name": {
-                    "value": "[parameters('name')]"
+                    "value": "[parameters('containerAppsEnvironmentName')]"
                   },
                   "location": {
                     "value": "[parameters('location')]"
                   },
-                  "appCommandLine": {
-                    "value": "[parameters('appCommandLine')]"
+                  "tags": {
+                    "value": "[parameters('tags')]"
+                  },
+                  "logAnalyticsWorkspaceName": {
+                    "value": "[parameters('logAnalyticsWorkspaceName')]"
                   },
                   "applicationInsightsName": {
                     "value": "[parameters('applicationInsightsName')]"
-                  },
-                  "appServicePlanId": {
-                    "value": "[parameters('appServicePlanId')]"
-                  },
-                  "runtimeName": {
-                    "value": "node"
-                  },
-                  "runtimeVersion": {
-                    "value": "18-lts"
-                  },
-                  "tags": {
-                    "value": "[union(parameters('tags'), createObject('azd-service-name', parameters('serviceName')))]"
                   }
                 },
                 "template": {
@@ -341,9 +356,9 @@
                     "_generator": {
                       "name": "bicep",
                       "version": "0.21.1.54444",
-                      "templateHash": "3134122572814386292"
+                      "templateHash": "7820798294319036671"
                     },
-                    "description": "Creates an Azure App Service in an existing Azure App Service plan."
+                    "description": "Creates an Azure Container Apps environment."
                   },
                   "parameters": {
                     "name": {
@@ -359,252 +374,229 @@
                     },
                     "applicationInsightsName": {
                       "type": "string",
-                      "defaultValue": ""
+                      "defaultValue": "",
+                      "metadata": {
+                        "description": "Name of the Application Insights resource"
+                      }
                     },
-                    "appServicePlanId": {
-                      "type": "string"
-                    },
-                    "keyVaultName": {
-                      "type": "string",
-                      "defaultValue": ""
-                    },
-                    "managedIdentity": {
+                    "daprEnabled": {
                       "type": "bool",
-                      "defaultValue": "[not(empty(parameters('keyVaultName')))]"
+                      "defaultValue": false,
+                      "metadata": {
+                        "description": "Specifies if Dapr is enabled"
+                      }
                     },
-                    "runtimeName": {
+                    "logAnalyticsWorkspaceName": {
                       "type": "string",
-                      "allowedValues": [
-                        "dotnet",
-                        "dotnetcore",
-                        "dotnet-isolated",
-                        "node",
-                        "python",
-                        "java",
-                        "powershell",
-                        "custom"
-                      ]
-                    },
-                    "runtimeNameAndVersion": {
-                      "type": "string",
-                      "defaultValue": "[format('{0}|{1}', parameters('runtimeName'), parameters('runtimeVersion'))]"
-                    },
-                    "runtimeVersion": {
-                      "type": "string"
-                    },
-                    "kind": {
-                      "type": "string",
-                      "defaultValue": "app,linux"
-                    },
-                    "allowedOrigins": {
-                      "type": "array",
-                      "defaultValue": []
-                    },
-                    "alwaysOn": {
-                      "type": "bool",
-                      "defaultValue": true
-                    },
-                    "appCommandLine": {
-                      "type": "string",
-                      "defaultValue": ""
-                    },
-                    "appSettings": {
-                      "type": "secureObject",
-                      "defaultValue": {}
-                    },
-                    "clientAffinityEnabled": {
-                      "type": "bool",
-                      "defaultValue": false
-                    },
-                    "enableOryxBuild": {
-                      "type": "bool",
-                      "defaultValue": "[contains(parameters('kind'), 'linux')]"
-                    },
-                    "functionAppScaleLimit": {
-                      "type": "int",
-                      "defaultValue": -1
-                    },
-                    "linuxFxVersion": {
-                      "type": "string",
-                      "defaultValue": "[parameters('runtimeNameAndVersion')]"
-                    },
-                    "minimumElasticInstanceCount": {
-                      "type": "int",
-                      "defaultValue": -1
-                    },
-                    "numberOfWorkers": {
-                      "type": "int",
-                      "defaultValue": -1
-                    },
-                    "scmDoBuildDuringDeployment": {
-                      "type": "bool",
-                      "defaultValue": false
-                    },
-                    "use32BitWorkerProcess": {
-                      "type": "bool",
-                      "defaultValue": false
-                    },
-                    "ftpsState": {
-                      "type": "string",
-                      "defaultValue": "FtpsOnly"
-                    },
-                    "healthCheckPath": {
-                      "type": "string",
-                      "defaultValue": ""
+                      "metadata": {
+                        "description": "Name of the Log Analytics workspace"
+                      }
                     }
                   },
                   "resources": [
                     {
-                      "type": "Microsoft.Web/sites/config",
-                      "apiVersion": "2022-03-01",
-                      "name": "[format('{0}/{1}', parameters('name'), 'logs')]",
-                      "properties": {
-                        "applicationLogs": {
-                          "fileSystem": {
-                            "level": "Verbose"
-                          }
-                        },
-                        "detailedErrorMessages": {
-                          "enabled": true
-                        },
-                        "failedRequestsTracing": {
-                          "enabled": true
-                        },
-                        "httpLogs": {
-                          "fileSystem": {
-                            "enabled": true,
-                            "retentionInDays": 1,
-                            "retentionInMb": 35
-                          }
-                        }
-                      },
-                      "dependsOn": [
-                        "[resourceId('Microsoft.Web/sites', parameters('name'))]"
-                      ]
-                    },
-                    {
-                      "type": "Microsoft.Web/sites/basicPublishingCredentialsPolicies",
-                      "apiVersion": "2022-03-01",
-                      "name": "[format('{0}/{1}', parameters('name'), 'ftp')]",
-                      "properties": {
-                        "allow": false
-                      },
-                      "dependsOn": [
-                        "[resourceId('Microsoft.Web/sites', parameters('name'))]"
-                      ]
-                    },
-                    {
-                      "type": "Microsoft.Web/sites/basicPublishingCredentialsPolicies",
-                      "apiVersion": "2022-03-01",
-                      "name": "[format('{0}/{1}', parameters('name'), 'scm')]",
-                      "properties": {
-                        "allow": false
-                      },
-                      "dependsOn": [
-                        "[resourceId('Microsoft.Web/sites', parameters('name'))]"
-                      ]
-                    },
-                    {
-                      "type": "Microsoft.Web/sites",
-                      "apiVersion": "2022-03-01",
+                      "type": "Microsoft.App/managedEnvironments",
+                      "apiVersion": "2023-04-01-preview",
                       "name": "[parameters('name')]",
                       "location": "[parameters('location')]",
                       "tags": "[parameters('tags')]",
-                      "kind": "[parameters('kind')]",
                       "properties": {
-                        "serverFarmId": "[parameters('appServicePlanId')]",
-                        "siteConfig": {
-                          "linuxFxVersion": "[parameters('linuxFxVersion')]",
-                          "alwaysOn": "[parameters('alwaysOn')]",
-                          "ftpsState": "[parameters('ftpsState')]",
-                          "minTlsVersion": "1.2",
-                          "appCommandLine": "[parameters('appCommandLine')]",
-                          "numberOfWorkers": "[if(not(equals(parameters('numberOfWorkers'), -1)), parameters('numberOfWorkers'), null())]",
-                          "minimumElasticInstanceCount": "[if(not(equals(parameters('minimumElasticInstanceCount'), -1)), parameters('minimumElasticInstanceCount'), null())]",
-                          "use32BitWorkerProcess": "[parameters('use32BitWorkerProcess')]",
-                          "functionAppScaleLimit": "[if(not(equals(parameters('functionAppScaleLimit'), -1)), parameters('functionAppScaleLimit'), null())]",
-                          "healthCheckPath": "[parameters('healthCheckPath')]",
-                          "cors": {
-                            "allowedOrigins": "[union(createArray('https://portal.azure.com', 'https://ms.portal.azure.com'), parameters('allowedOrigins'))]"
+                        "appLogsConfiguration": {
+                          "destination": "log-analytics",
+                          "logAnalyticsConfiguration": {
+                            "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName')), '2022-10-01').customerId]",
+                            "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName')), '2022-10-01').primarySharedKey]"
                           }
                         },
-                        "clientAffinityEnabled": "[parameters('clientAffinityEnabled')]",
-                        "httpsOnly": true
-                      },
-                      "identity": {
-                        "type": "[if(parameters('managedIdentity'), 'SystemAssigned', 'None')]"
+                        "daprAIInstrumentationKey": "[if(and(parameters('daprEnabled'), not(empty(parameters('applicationInsightsName')))), reference(resourceId('Microsoft.Insights/components', parameters('applicationInsightsName')), '2020-02-02').InstrumentationKey, '')]"
                       }
-                    },
-                    {
-                      "condition": "[not(empty(parameters('appSettings')))]",
-                      "type": "Microsoft.Resources/deployments",
-                      "apiVersion": "2022-09-01",
-                      "name": "[format('{0}-appSettings', parameters('name'))]",
-                      "properties": {
-                        "expressionEvaluationOptions": {
-                          "scope": "inner"
-                        },
-                        "mode": "Incremental",
-                        "parameters": {
-                          "name": {
-                            "value": "[parameters('name')]"
-                          },
-                          "appSettings": {
-                            "value": "[union(parameters('appSettings'), createObject('SCM_DO_BUILD_DURING_DEPLOYMENT', string(parameters('scmDoBuildDuringDeployment')), 'ENABLE_ORYX_BUILD', string(parameters('enableOryxBuild'))), if(and(equals(parameters('runtimeName'), 'python'), equals(parameters('appCommandLine'), '')), createObject('PYTHON_ENABLE_GUNICORN_MULTIWORKERS', 'true'), createObject()), if(not(empty(parameters('applicationInsightsName'))), createObject('APPLICATIONINSIGHTS_CONNECTION_STRING', reference(resourceId('Microsoft.Insights/components', parameters('applicationInsightsName')), '2020-02-02').ConnectionString), createObject()), if(not(empty(parameters('keyVaultName'))), createObject('AZURE_KEY_VAULT_ENDPOINT', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2022-07-01').vaultUri), createObject()))]"
-                          }
-                        },
-                        "template": {
-                          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-                          "contentVersion": "1.0.0.0",
-                          "metadata": {
-                            "_generator": {
-                              "name": "bicep",
-                              "version": "0.21.1.54444",
-                              "templateHash": "12385797959791820601"
-                            },
-                            "description": "Updates app settings for an Azure App Service."
-                          },
-                          "parameters": {
-                            "name": {
-                              "type": "string",
-                              "metadata": {
-                                "description": "The name of the app service resource within the current resource group scope"
-                              }
-                            },
-                            "appSettings": {
-                              "type": "secureObject",
-                              "metadata": {
-                                "description": "The app settings to be applied to the app service"
-                              }
-                            }
-                          },
-                          "resources": [
-                            {
-                              "type": "Microsoft.Web/sites/config",
-                              "apiVersion": "2022-03-01",
-                              "name": "[format('{0}/{1}', parameters('name'), 'appsettings')]",
-                              "properties": "[parameters('appSettings')]"
-                            }
-                          ]
-                        }
-                      },
-                      "dependsOn": [
-                        "[resourceId('Microsoft.Web/sites', parameters('name'))]"
-                      ]
                     }
                   ],
                   "outputs": {
-                    "identityPrincipalId": {
+                    "defaultDomain": {
                       "type": "string",
-                      "value": "[if(parameters('managedIdentity'), reference(resourceId('Microsoft.Web/sites', parameters('name')), '2022-03-01', 'full').identity.principalId, '')]"
+                      "value": "[reference(resourceId('Microsoft.App/managedEnvironments', parameters('name')), '2023-04-01-preview').defaultDomain]"
+                    },
+                    "id": {
+                      "type": "string",
+                      "value": "[resourceId('Microsoft.App/managedEnvironments', parameters('name'))]"
                     },
                     "name": {
                       "type": "string",
                       "value": "[parameters('name')]"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2022-09-01",
+              "name": "[format('{0}-container-registry', parameters('name'))]",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "name": {
+                    "value": "[parameters('containerRegistryName')]"
+                  },
+                  "location": {
+                    "value": "[parameters('location')]"
+                  },
+                  "tags": {
+                    "value": "[parameters('tags')]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.21.1.54444",
+                      "templateHash": "2245433210041360409"
                     },
-                    "uri": {
+                    "description": "Creates an Azure Container Registry."
+                  },
+                  "parameters": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "location": {
                       "type": "string",
-                      "value": "[format('https://{0}', reference(resourceId('Microsoft.Web/sites', parameters('name')), '2022-03-01').defaultHostName)]"
+                      "defaultValue": "[resourceGroup().location]"
+                    },
+                    "tags": {
+                      "type": "object",
+                      "defaultValue": {}
+                    },
+                    "adminUserEnabled": {
+                      "type": "bool",
+                      "defaultValue": false,
+                      "metadata": {
+                        "description": "Indicates whether admin user is enabled"
+                      }
+                    },
+                    "anonymousPullEnabled": {
+                      "type": "bool",
+                      "defaultValue": false,
+                      "metadata": {
+                        "description": "Indicates whether anonymous pull is enabled"
+                      }
+                    },
+                    "dataEndpointEnabled": {
+                      "type": "bool",
+                      "defaultValue": false,
+                      "metadata": {
+                        "description": "Indicates whether data endpoint is enabled"
+                      }
+                    },
+                    "encryption": {
+                      "type": "object",
+                      "defaultValue": {
+                        "status": "disabled"
+                      },
+                      "metadata": {
+                        "description": "Encryption settings"
+                      }
+                    },
+                    "networkRuleBypassOptions": {
+                      "type": "string",
+                      "defaultValue": "AzureServices",
+                      "metadata": {
+                        "description": "Options for bypassing network rules"
+                      }
+                    },
+                    "publicNetworkAccess": {
+                      "type": "string",
+                      "defaultValue": "Enabled",
+                      "metadata": {
+                        "description": "Public network access setting"
+                      }
+                    },
+                    "sku": {
+                      "type": "object",
+                      "defaultValue": {
+                        "name": "Basic"
+                      },
+                      "metadata": {
+                        "description": "SKU settings"
+                      }
+                    },
+                    "zoneRedundancy": {
+                      "type": "string",
+                      "defaultValue": "Disabled",
+                      "metadata": {
+                        "description": "Zone redundancy setting"
+                      }
+                    },
+                    "workspaceId": {
+                      "type": "string",
+                      "defaultValue": "",
+                      "metadata": {
+                        "description": "The log analytics workspace ID used for logging and monitoring"
+                      }
+                    }
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.ContainerRegistry/registries",
+                      "apiVersion": "2022-02-01-preview",
+                      "name": "[parameters('name')]",
+                      "location": "[parameters('location')]",
+                      "tags": "[parameters('tags')]",
+                      "sku": "[parameters('sku')]",
+                      "properties": {
+                        "adminUserEnabled": "[parameters('adminUserEnabled')]",
+                        "anonymousPullEnabled": "[parameters('anonymousPullEnabled')]",
+                        "dataEndpointEnabled": "[parameters('dataEndpointEnabled')]",
+                        "encryption": "[parameters('encryption')]",
+                        "networkRuleBypassOptions": "[parameters('networkRuleBypassOptions')]",
+                        "publicNetworkAccess": "[parameters('publicNetworkAccess')]",
+                        "zoneRedundancy": "[parameters('zoneRedundancy')]"
+                      }
+                    },
+                    {
+                      "condition": "[not(empty(parameters('workspaceId')))]",
+                      "type": "Microsoft.Insights/diagnosticSettings",
+                      "apiVersion": "2021-05-01-preview",
+                      "scope": "[format('Microsoft.ContainerRegistry/registries/{0}', parameters('name'))]",
+                      "name": "registry-diagnostics",
+                      "properties": {
+                        "workspaceId": "[parameters('workspaceId')]",
+                        "logs": [
+                          {
+                            "category": "ContainerRegistryRepositoryEvents",
+                            "enabled": true
+                          },
+                          {
+                            "category": "ContainerRegistryLoginEvents",
+                            "enabled": true
+                          }
+                        ],
+                        "metrics": [
+                          {
+                            "category": "AllMetrics",
+                            "enabled": true,
+                            "timeGrain": "PT1M"
+                          }
+                        ]
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.ContainerRegistry/registries', parameters('name'))]"
+                      ]
+                    }
+                  ],
+                  "outputs": {
+                    "loginServer": {
+                      "type": "string",
+                      "value": "[reference(resourceId('Microsoft.ContainerRegistry/registries', parameters('name')), '2022-02-01-preview').loginServer]"
+                    },
+                    "name": {
+                      "type": "string",
+                      "value": "[parameters('name')]"
                     }
                   }
                 }
@@ -612,17 +604,25 @@
             }
           ],
           "outputs": {
-            "SERVICE_WEB_IDENTITY_PRINCIPAL_ID": {
+            "defaultDomain": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-deployment', parameters('name'))), '2022-09-01').outputs.identityPrincipalId.value]"
+              "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-container-apps-environment', parameters('name'))), '2022-09-01').outputs.defaultDomain.value]"
             },
-            "SERVICE_WEB_NAME": {
+            "environmentName": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-deployment', parameters('name'))), '2022-09-01').outputs.name.value]"
+              "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-container-apps-environment', parameters('name'))), '2022-09-01').outputs.name.value]"
             },
-            "SERVICE_WEB_URI": {
+            "environmentId": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-deployment', parameters('name'))), '2022-09-01').outputs.uri.value]"
+              "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-container-apps-environment', parameters('name'))), '2022-09-01').outputs.id.value]"
+            },
+            "registryLoginServer": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-container-registry', parameters('name'))), '2022-09-01').outputs.loginServer.value]"
+            },
+            "registryName": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-container-registry', parameters('name'))), '2022-09-01').outputs.name.value]"
             }
           }
         }
@@ -634,112 +634,35 @@
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
-      "name": "web-appsettings",
-            "properties": {
+      "name": "web",
+      "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
         },
         "mode": "Incremental",
         "parameters": {
-          "name": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments','web'), '2022-09-01').outputs.SERVICE_WEB_NAME.value]"
-          },
-          "appSettings": {
-            "value": {
-              "REACT_APP_API_BASE_URL": "[if(parameters('useAPIM'), reference(resourceId('Microsoft.Resources/deployments', 'apim-api-deployment'), '2022-09-01').outputs.SERVICE_API_URI.value, reference(resourceId('Microsoft.Resources/deployments', 'api'), '2022-09-01').outputs.SERVICE_API_URI.value)]",
-              "REACT_APP_APPLICATIONINSIGHTS_CONNECTION_STRING": "[reference(resourceId('Microsoft.Resources/deployments', 'monitoring'), '2022-09-01').outputs.applicationInsightsConnectionString.value]"
-            }
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.21.1.54444",
-              "templateHash": "12385797959791820601"
-            },
-            "description": "Updates app settings for an Azure App Service."
-          },
-          "parameters": {
-            "name": {
-              "type": "string",
-              "metadata": {
-                "description": "The name of the app service resource within the current resource group scope"
-              }
-            },
-            "appSettings": {
-              "type": "secureObject",
-              "metadata": {
-                "description": "The app settings to be applied to the app service"
-              }
-            }
-          },
-          "resources": [
-            {
-              "type": "Microsoft.Web/sites/config",
-              "apiVersion": "2022-03-01",
-              "name": "[format('{0}/{1}', parameters('name'), 'appsettings')]",
-              "properties": "[parameters('appSettings')]"
-            }
-          ]
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'api')]",
-        "[resourceId('Microsoft.Resources/deployments', 'apim-api-deployment')]",
-        "[resourceId('Microsoft.Resources/deployments', 'monitoring')]",
-        "[resourceId('Microsoft.Resources/deployments', 'web')]"
-      ]
-    },
-    {
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
-      "name": "api",
-          "properties": {
-          "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "name": "[if(not(empty(parameters('apiServiceName'))), createObject('value', parameters('apiServiceName')), createObject('value', format('{0}api-{1}', variables('abbrs').webSitesAppService, variables('resourceToken'))))]",
+          "name": "[if(not(empty(parameters('webContainerAppName'))), createObject('value', parameters('webContainerAppName')), createObject('value', format('{0}web-{1}', variables('abbrs').appContainerApps, variables('resourceToken'))))]",
           "location": {
             "value": "[parameters('location')]"
           },
           "tags": {
             "value": "[variables('tags')]"
           },
+          "identityName": {
+            "value": "[format('{0}web-{1}', variables('abbrs').managedIdentityUserAssignedIdentities, variables('resourceToken'))]"
+          },
+          "apiBaseUrl": "[if(not(empty(parameters('webApiBaseUrl'))), createObject('value', parameters('webApiBaseUrl')), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'api'), '2022-09-01').outputs.SERVICE_API_URI.value))]",
           "applicationInsightsName": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'monitoring'), '2022-09-01').outputs.applicationInsightsName.value]"
           },
-          "appServicePlanId": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appserviceplan'), '2022-09-01').outputs.id.value]"
+          "containerAppsEnvironmentName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'container-apps'), '2022-09-01').outputs.environmentName.value]"
           },
-          "keyVaultName": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyvault'), '2022-09-01').outputs.name.value]"
+          "containerRegistryName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'container-apps'), '2022-09-01').outputs.registryName.value]"
           },
-          "allowedOrigins": {
-            "value": [
-              "[reference(resourceId('Microsoft.Resources/deployments', 'web'), '2022-09-01').outputs.SERVICE_WEB_URI.value]"
-            ]
-          },
-          "runtimeName": {
-            "value": "[variables('runtimeName')]"
-          },
-          "runtimeVersion": {
-            "value": "[variables('runtimeVersion')]"
-          },
-          "appSettings": {
-            "value": {
-              "AZURE_COSMOS_CONNECTION_STRING_KEY": "[reference(resourceId('Microsoft.Resources/deployments', 'cosmos'), '2022-09-01').outputs.connectionStringKey.value]",
-              "AZURE_COSMOS_DATABASE_NAME": "[reference(resourceId('Microsoft.Resources/deployments', 'cosmos'), '2022-09-01').outputs.databaseName.value]",
-              "AZURE_COSMOS_ENDPOINT": "[reference(resourceId('Microsoft.Resources/deployments', 'cosmos'), '2022-09-01').outputs.endpoint.value]",
-              "API_ALLOW_ORIGINS": "[reference(resourceId('Microsoft.Resources/deployments', 'web'), '2022-09-01').outputs.SERVICE_WEB_URI.value]"
-            }
-          },
-          "appcommandline": {
-            "value": "[if(equals(variables('runtimeName'), 'python'), 'gunicorn --workers 4 --threads 2 --timeout 60 --access-logfile \"-\" --error-logfile \"-\" --bind=0.0.0.0:8000 -k uvicorn.workers.UvicornWorker todo.app:app', '')]"
+          "exists": {
+            "value": "[parameters('webAppExists')]"
           }
         },
         "template": {
@@ -749,7 +672,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.21.1.54444",
-              "templateHash": "17889685883996917557"
+              "templateHash": "7076369721458700468"
             }
           },
           "parameters": {
@@ -764,56 +687,40 @@
               "type": "object",
               "defaultValue": {}
             },
-            "allowedOrigins": {
-              "type": "array",
-              "defaultValue": []
-            },
-            "appCommandLine": {
-              "type": "string",
-              "defaultValue": ""
-            },
-            "applicationInsightsName": {
-              "type": "string",
-              "defaultValue": ""
-            },
-            "appServicePlanId": {
+            "identityName": {
               "type": "string"
             },
-            "appSettings": {
-              "type": "secureObject",
-              "defaultValue": {}
+            "apiBaseUrl": {
+              "type": "string"
             },
-            "keyVaultName": {
+            "applicationInsightsName": {
+              "type": "string"
+            },
+            "containerAppsEnvironmentName": {
+              "type": "string"
+            },
+            "containerRegistryName": {
               "type": "string"
             },
             "serviceName": {
               "type": "string",
-              "defaultValue": "api"
+              "defaultValue": "web"
             },
-            "runtimeName": {
-              "type": "string"
-            },
-            "runtimeVersion": {
-              "type": "string"
-            },
-            "javaRuntimeOptions": {
-              "type": "array",
-              "defaultValue": [],
-              "metadata": {
-                "description": "JVM runtime options. Use this instead of defining JAVA_OPTS manually on appSettings."
-              }
+            "exists": {
+              "type": "bool"
             }
-          },
-          "variables": {
-            "defaultJavaRuntimeOptions": [
-              "-Djdk.attach.allowAttachSelf=true"
-            ]
           },
           "resources": [
             {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2023-01-31",
+              "name": "[parameters('identityName')]",
+              "location": "[parameters('location')]"
+            },
+            {
               "type": "Microsoft.Resources/deployments",
               "apiVersion": "2022-09-01",
-              "name": "[format('{0}-app-module', parameters('name'))]",
+              "name": "[format('{0}-container-app', parameters('serviceName'))]",
               "properties": {
                 "expressionEvaluationOptions": {
                   "scope": "inner"
@@ -829,32 +736,39 @@
                   "tags": {
                     "value": "[union(parameters('tags'), createObject('azd-service-name', parameters('serviceName')))]"
                   },
-                  "allowedOrigins": {
-                    "value": "[parameters('allowedOrigins')]"
+                  "identityType": {
+                    "value": "UserAssigned"
                   },
-                  "appCommandLine": {
-                    "value": "[parameters('appCommandLine')]"
+                  "identityName": {
+                    "value": "[parameters('identityName')]"
                   },
-                  "applicationInsightsName": {
-                    "value": "[parameters('applicationInsightsName')]"
+                  "exists": {
+                    "value": "[parameters('exists')]"
                   },
-                  "appServicePlanId": {
-                    "value": "[parameters('appServicePlanId')]"
+                  "containerAppsEnvironmentName": {
+                    "value": "[parameters('containerAppsEnvironmentName')]"
                   },
-                  "appSettings": {
-                    "value": "[parameters('appSettings')]"
+                  "containerRegistryName": {
+                    "value": "[parameters('containerRegistryName')]"
                   },
-                  "keyVaultName": {
-                    "value": "[parameters('keyVaultName')]"
+                  "env": {
+                    "value": [
+                      {
+                        "name": "REACT_APP_APPLICATIONINSIGHTS_CONNECTION_STRING",
+                        "value": "[reference(resourceId('Microsoft.Insights/components', parameters('applicationInsightsName')), '2020-02-02').ConnectionString]"
+                      },
+                      {
+                        "name": "REACT_APP_API_BASE_URL",
+                        "value": "[parameters('apiBaseUrl')]"
+                      },
+                      {
+                        "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+                        "value": "[reference(resourceId('Microsoft.Insights/components', parameters('applicationInsightsName')), '2020-02-02').ConnectionString]"
+                      }
+                    ]
                   },
-                  "runtimeName": {
-                    "value": "[parameters('runtimeName')]"
-                  },
-                  "runtimeVersion": {
-                    "value": "[parameters('runtimeVersion')]"
-                  },
-                  "scmDoBuildDuringDeployment": {
-                    "value": true
+                  "targetPort": {
+                    "value": 80
                   }
                 },
                 "template": {
@@ -864,9 +778,9 @@
                     "_generator": {
                       "name": "bicep",
                       "version": "0.21.1.54444",
-                      "templateHash": "3134122572814386292"
+                      "templateHash": "18000323914714494769"
                     },
-                    "description": "Creates an Azure App Service in an existing Azure App Service plan."
+                    "description": "Creates or updates an existing Azure Container App."
                   },
                   "parameters": {
                     "name": {
@@ -880,189 +794,162 @@
                       "type": "object",
                       "defaultValue": {}
                     },
-                    "applicationInsightsName": {
+                    "containerAppsEnvironmentName": {
                       "type": "string",
-                      "defaultValue": ""
+                      "metadata": {
+                        "description": "The environment name for the container apps"
+                      }
                     },
-                    "appServicePlanId": {
-                      "type": "string"
-                    },
-                    "keyVaultName": {
+                    "containerCpuCoreCount": {
                       "type": "string",
-                      "defaultValue": ""
+                      "defaultValue": "0.5",
+                      "metadata": {
+                        "description": "The number of CPU cores allocated to a single container instance, e.g., 0.5"
+                      }
                     },
-                    "managedIdentity": {
-                      "type": "bool",
-                      "defaultValue": "[not(empty(parameters('keyVaultName')))]"
+                    "containerMaxReplicas": {
+                      "type": "int",
+                      "defaultValue": 10,
+                      "minValue": 1,
+                      "metadata": {
+                        "description": "The maximum number of replicas to run. Must be at least 1."
+                      }
                     },
-                    "runtimeName": {
+                    "containerMemory": {
                       "type": "string",
+                      "defaultValue": "1.0Gi",
+                      "metadata": {
+                        "description": "The amount of memory allocated to a single container instance, e.g., 1Gi"
+                      }
+                    },
+                    "containerMinReplicas": {
+                      "type": "int",
+                      "defaultValue": 1,
+                      "minValue": 1,
+                      "metadata": {
+                        "description": "The minimum number of replicas to run. Must be at least 1."
+                      }
+                    },
+                    "containerName": {
+                      "type": "string",
+                      "defaultValue": "main",
+                      "metadata": {
+                        "description": "The name of the container"
+                      }
+                    },
+                    "containerRegistryName": {
+                      "type": "string",
+                      "defaultValue": "",
+                      "metadata": {
+                        "description": "The name of the container registry"
+                      }
+                    },
+                    "daprAppProtocol": {
+                      "type": "string",
+                      "defaultValue": "http",
                       "allowedValues": [
-                        "dotnet",
-                        "dotnetcore",
-                        "dotnet-isolated",
-                        "node",
-                        "python",
-                        "java",
-                        "powershell",
-                        "custom"
-                      ]
+                        "http",
+                        "grpc"
+                      ],
+                      "metadata": {
+                        "description": "The protocol used by Dapr to connect to the app, e.g., HTTP or gRPC"
+                      }
                     },
-                    "runtimeNameAndVersion": {
+                    "daprEnabled": {
+                      "type": "bool",
+                      "defaultValue": false,
+                      "metadata": {
+                        "description": "Enable or disable Dapr for the container app"
+                      }
+                    },
+                    "daprAppId": {
                       "type": "string",
-                      "defaultValue": "[format('{0}|{1}', parameters('runtimeName'), parameters('runtimeVersion'))]"
+                      "defaultValue": "[parameters('containerName')]",
+                      "metadata": {
+                        "description": "The Dapr app ID"
+                      }
                     },
-                    "runtimeVersion": {
-                      "type": "string"
+                    "exists": {
+                      "type": "bool",
+                      "defaultValue": false,
+                      "metadata": {
+                        "description": "Specifies if the resource already exists"
+                      }
                     },
-                    "kind": {
+                    "ingressEnabled": {
+                      "type": "bool",
+                      "defaultValue": true,
+                      "metadata": {
+                        "description": "Specifies if Ingress is enabled for the container app"
+                      }
+                    },
+                    "identityType": {
                       "type": "string",
-                      "defaultValue": "app,linux"
+                      "defaultValue": "None",
+                      "allowedValues": [
+                        "None",
+                        "SystemAssigned",
+                        "UserAssigned"
+                      ],
+                      "metadata": {
+                        "description": "The type of identity for the resource"
+                      }
                     },
-                    "allowedOrigins": {
+                    "identityName": {
+                      "type": "string",
+                      "defaultValue": "",
+                      "metadata": {
+                        "description": "The name of the user-assigned identity"
+                      }
+                    },
+                    "imageName": {
+                      "type": "string",
+                      "defaultValue": "",
+                      "metadata": {
+                        "description": "The name of the container image"
+                      }
+                    },
+                    "secrets": {
                       "type": "array",
-                      "defaultValue": []
+                      "defaultValue": [],
+                      "metadata": {
+                        "description": "The secrets required for the container"
+                      }
                     },
-                    "alwaysOn": {
+                    "env": {
+                      "type": "array",
+                      "defaultValue": [],
+                      "metadata": {
+                        "description": "The environment variables for the container"
+                      }
+                    },
+                    "external": {
                       "type": "bool",
-                      "defaultValue": true
+                      "defaultValue": true,
+                      "metadata": {
+                        "description": "Specifies if the resource ingress is exposed externally"
+                      }
                     },
-                    "appCommandLine": {
-                      "type": "string",
-                      "defaultValue": ""
+                    "serviceBinds": {
+                      "type": "array",
+                      "defaultValue": [],
+                      "metadata": {
+                        "description": "The service binds associated with the container"
+                      }
                     },
-                    "appSettings": {
-                      "type": "secureObject",
-                      "defaultValue": {}
-                    },
-                    "clientAffinityEnabled": {
-                      "type": "bool",
-                      "defaultValue": false
-                    },
-                    "enableOryxBuild": {
-                      "type": "bool",
-                      "defaultValue": "[contains(parameters('kind'), 'linux')]"
-                    },
-                    "functionAppScaleLimit": {
+                    "targetPort": {
                       "type": "int",
-                      "defaultValue": -1
-                    },
-                    "linuxFxVersion": {
-                      "type": "string",
-                      "defaultValue": "[parameters('runtimeNameAndVersion')]"
-                    },
-                    "minimumElasticInstanceCount": {
-                      "type": "int",
-                      "defaultValue": -1
-                    },
-                    "numberOfWorkers": {
-                      "type": "int",
-                      "defaultValue": -1
-                    },
-                    "scmDoBuildDuringDeployment": {
-                      "type": "bool",
-                      "defaultValue": false
-                    },
-                    "use32BitWorkerProcess": {
-                      "type": "bool",
-                      "defaultValue": false
-                    },
-                    "ftpsState": {
-                      "type": "string",
-                      "defaultValue": "FtpsOnly"
-                    },
-                    "healthCheckPath": {
-                      "type": "string",
-                      "defaultValue": ""
+                      "defaultValue": 80,
+                      "metadata": {
+                        "description": "The target port for the container"
+                      }
                     }
                   },
                   "resources": [
                     {
-                      "type": "Microsoft.Web/sites/config",
-                      "apiVersion": "2022-03-01",
-                      "name": "[format('{0}/{1}', parameters('name'), 'logs')]",
-                      "properties": {
-                        "applicationLogs": {
-                          "fileSystem": {
-                            "level": "Verbose"
-                          }
-                        },
-                        "detailedErrorMessages": {
-                          "enabled": true
-                        },
-                        "failedRequestsTracing": {
-                          "enabled": true
-                        },
-                        "httpLogs": {
-                          "fileSystem": {
-                            "enabled": true,
-                            "retentionInDays": 1,
-                            "retentionInMb": 35
-                          }
-                        }
-                      },
-                      "dependsOn": [
-                        "[resourceId('Microsoft.Web/sites', parameters('name'))]"
-                      ]
-                    },
-                    {
-                      "type": "Microsoft.Web/sites/basicPublishingCredentialsPolicies",
-                      "apiVersion": "2022-03-01",
-                      "name": "[format('{0}/{1}', parameters('name'), 'ftp')]",
-                      "properties": {
-                        "allow": false
-                      },
-                      "dependsOn": [
-                        "[resourceId('Microsoft.Web/sites', parameters('name'))]"
-                      ]
-                    },
-                    {
-                      "type": "Microsoft.Web/sites/basicPublishingCredentialsPolicies",
-                      "apiVersion": "2022-03-01",
-                      "name": "[format('{0}/{1}', parameters('name'), 'scm')]",
-                      "properties": {
-                        "allow": false
-                      },
-                      "dependsOn": [
-                        "[resourceId('Microsoft.Web/sites', parameters('name'))]"
-                      ]
-                    },
-                    {
-                      "type": "Microsoft.Web/sites",
-                      "apiVersion": "2022-03-01",
-                      "name": "[parameters('name')]",
-                      "location": "[parameters('location')]",
-                      "tags": "[parameters('tags')]",
-                      "kind": "[parameters('kind')]",
-                      "properties": {
-                        "serverFarmId": "[parameters('appServicePlanId')]",
-                        "siteConfig": {
-                          "linuxFxVersion": "[parameters('linuxFxVersion')]",
-                          "alwaysOn": "[parameters('alwaysOn')]",
-                          "ftpsState": "[parameters('ftpsState')]",
-                          "minTlsVersion": "1.2",
-                          "appCommandLine": "[parameters('appCommandLine')]",
-                          "numberOfWorkers": "[if(not(equals(parameters('numberOfWorkers'), -1)), parameters('numberOfWorkers'), null())]",
-                          "minimumElasticInstanceCount": "[if(not(equals(parameters('minimumElasticInstanceCount'), -1)), parameters('minimumElasticInstanceCount'), null())]",
-                          "use32BitWorkerProcess": "[parameters('use32BitWorkerProcess')]",
-                          "functionAppScaleLimit": "[if(not(equals(parameters('functionAppScaleLimit'), -1)), parameters('functionAppScaleLimit'), null())]",
-                          "healthCheckPath": "[parameters('healthCheckPath')]",
-                          "cors": {
-                            "allowedOrigins": "[union(createArray('https://portal.azure.com', 'https://ms.portal.azure.com'), parameters('allowedOrigins'))]"
-                          }
-                        },
-                        "clientAffinityEnabled": "[parameters('clientAffinityEnabled')]",
-                        "httpsOnly": true
-                      },
-                      "identity": {
-                        "type": "[if(parameters('managedIdentity'), 'SystemAssigned', 'None')]"
-                      }
-                    },
-                    {
-                      "condition": "[not(empty(parameters('appSettings')))]",
                       "type": "Microsoft.Resources/deployments",
                       "apiVersion": "2022-09-01",
-                      "name": "[format('{0}-appSettings', parameters('name'))]",
+                      "name": "[format('{0}-update', deployment().name)]",
                       "properties": {
                         "expressionEvaluationOptions": {
                           "scope": "inner"
@@ -1072,8 +959,66 @@
                           "name": {
                             "value": "[parameters('name')]"
                           },
-                          "appSettings": {
-                            "value": "[union(parameters('appSettings'), createObject('SCM_DO_BUILD_DURING_DEPLOYMENT', string(parameters('scmDoBuildDuringDeployment')), 'ENABLE_ORYX_BUILD', string(parameters('enableOryxBuild'))), if(and(equals(parameters('runtimeName'), 'python'), equals(parameters('appCommandLine'), '')), createObject('PYTHON_ENABLE_GUNICORN_MULTIWORKERS', 'true'), createObject()), if(not(empty(parameters('applicationInsightsName'))), createObject('APPLICATIONINSIGHTS_CONNECTION_STRING', reference(resourceId('Microsoft.Insights/components', parameters('applicationInsightsName')), '2020-02-02').ConnectionString), createObject()), if(not(empty(parameters('keyVaultName'))), createObject('AZURE_KEY_VAULT_ENDPOINT', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2022-07-01').vaultUri), createObject()))]"
+                          "location": {
+                            "value": "[parameters('location')]"
+                          },
+                          "tags": {
+                            "value": "[parameters('tags')]"
+                          },
+                          "identityType": {
+                            "value": "[parameters('identityType')]"
+                          },
+                          "identityName": {
+                            "value": "[parameters('identityName')]"
+                          },
+                          "ingressEnabled": {
+                            "value": "[parameters('ingressEnabled')]"
+                          },
+                          "containerName": {
+                            "value": "[parameters('containerName')]"
+                          },
+                          "containerAppsEnvironmentName": {
+                            "value": "[parameters('containerAppsEnvironmentName')]"
+                          },
+                          "containerRegistryName": {
+                            "value": "[parameters('containerRegistryName')]"
+                          },
+                          "containerCpuCoreCount": {
+                            "value": "[parameters('containerCpuCoreCount')]"
+                          },
+                          "containerMemory": {
+                            "value": "[parameters('containerMemory')]"
+                          },
+                          "containerMinReplicas": {
+                            "value": "[parameters('containerMinReplicas')]"
+                          },
+                          "containerMaxReplicas": {
+                            "value": "[parameters('containerMaxReplicas')]"
+                          },
+                          "daprEnabled": {
+                            "value": "[parameters('daprEnabled')]"
+                          },
+                          "daprAppId": {
+                            "value": "[parameters('daprAppId')]"
+                          },
+                          "daprAppProtocol": {
+                            "value": "[parameters('daprAppProtocol')]"
+                          },
+                          "secrets": {
+                            "value": "[parameters('secrets')]"
+                          },
+                          "external": {
+                            "value": "[parameters('external')]"
+                          },
+                          "env": {
+                            "value": "[parameters('env')]"
+                          },
+                          "imageName": "[if(not(empty(parameters('imageName'))), createObject('value', parameters('imageName')), if(parameters('exists'), createObject('value', reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2023-04-01-preview').template.containers[0].image), createObject('value', '')))]",
+                          "targetPort": {
+                            "value": "[parameters('targetPort')]"
+                          },
+                          "serviceBinds": {
+                            "value": "[parameters('serviceBinds')]"
                           }
                         },
                         "template": {
@@ -1083,51 +1028,332 @@
                             "_generator": {
                               "name": "bicep",
                               "version": "0.21.1.54444",
-                              "templateHash": "12385797959791820601"
+                              "templateHash": "544544143713108597"
                             },
-                            "description": "Updates app settings for an Azure App Service."
+                            "description": "Creates a container app in an Azure Container App environment."
                           },
                           "parameters": {
                             "name": {
+                              "type": "string"
+                            },
+                            "location": {
                               "type": "string",
+                              "defaultValue": "[resourceGroup().location]"
+                            },
+                            "tags": {
+                              "type": "object",
+                              "defaultValue": {}
+                            },
+                            "allowedOrigins": {
+                              "type": "array",
+                              "defaultValue": [],
                               "metadata": {
-                                "description": "The name of the app service resource within the current resource group scope"
+                                "description": "Allowed origins"
                               }
                             },
-                            "appSettings": {
-                              "type": "secureObject",
+                            "containerAppsEnvironmentName": {
+                              "type": "string",
                               "metadata": {
-                                "description": "The app settings to be applied to the app service"
+                                "description": "Name of the environment for container apps"
+                              }
+                            },
+                            "containerCpuCoreCount": {
+                              "type": "string",
+                              "defaultValue": "0.5",
+                              "metadata": {
+                                "description": "CPU cores allocated to a single container instance, e.g., 0.5"
+                              }
+                            },
+                            "containerMaxReplicas": {
+                              "type": "int",
+                              "defaultValue": 10,
+                              "minValue": 1,
+                              "metadata": {
+                                "description": "The maximum number of replicas to run. Must be at least 1."
+                              }
+                            },
+                            "containerMemory": {
+                              "type": "string",
+                              "defaultValue": "1.0Gi",
+                              "metadata": {
+                                "description": "Memory allocated to a single container instance, e.g., 1Gi"
+                              }
+                            },
+                            "containerMinReplicas": {
+                              "type": "int",
+                              "defaultValue": 1,
+                              "metadata": {
+                                "description": "The minimum number of replicas to run. Must be at least 1."
+                              }
+                            },
+                            "containerName": {
+                              "type": "string",
+                              "defaultValue": "main",
+                              "metadata": {
+                                "description": "The name of the container"
+                              }
+                            },
+                            "containerRegistryName": {
+                              "type": "string",
+                              "defaultValue": "",
+                              "metadata": {
+                                "description": "The name of the container registry"
+                              }
+                            },
+                            "daprAppProtocol": {
+                              "type": "string",
+                              "defaultValue": "http",
+                              "allowedValues": [
+                                "http",
+                                "grpc"
+                              ],
+                              "metadata": {
+                                "description": "The protocol used by Dapr to connect to the app, e.g., http or grpc"
+                              }
+                            },
+                            "daprAppId": {
+                              "type": "string",
+                              "defaultValue": "[parameters('containerName')]",
+                              "metadata": {
+                                "description": "The Dapr app ID"
+                              }
+                            },
+                            "daprEnabled": {
+                              "type": "bool",
+                              "defaultValue": false,
+                              "metadata": {
+                                "description": "Enable Dapr"
+                              }
+                            },
+                            "env": {
+                              "type": "array",
+                              "defaultValue": [],
+                              "metadata": {
+                                "description": "The environment variables for the container"
+                              }
+                            },
+                            "external": {
+                              "type": "bool",
+                              "defaultValue": true,
+                              "metadata": {
+                                "description": "Specifies if the resource ingress is exposed externally"
+                              }
+                            },
+                            "identityName": {
+                              "type": "string",
+                              "defaultValue": "",
+                              "metadata": {
+                                "description": "The name of the user-assigned identity"
+                              }
+                            },
+                            "identityType": {
+                              "type": "string",
+                              "defaultValue": "None",
+                              "allowedValues": [
+                                "None",
+                                "SystemAssigned",
+                                "UserAssigned"
+                              ],
+                              "metadata": {
+                                "description": "The type of identity for the resource"
+                              }
+                            },
+                            "imageName": {
+                              "type": "string",
+                              "defaultValue": "",
+                              "metadata": {
+                                "description": "The name of the container image"
+                              }
+                            },
+                            "ingressEnabled": {
+                              "type": "bool",
+                              "defaultValue": true,
+                              "metadata": {
+                                "description": "Specifies if Ingress is enabled for the container app"
+                              }
+                            },
+                            "revisionMode": {
+                              "type": "string",
+                              "defaultValue": "Single"
+                            },
+                            "secrets": {
+                              "type": "array",
+                              "defaultValue": [],
+                              "metadata": {
+                                "description": "The secrets required for the container"
+                              }
+                            },
+                            "serviceBinds": {
+                              "type": "array",
+                              "defaultValue": [],
+                              "metadata": {
+                                "description": "The service binds associated with the container"
+                              }
+                            },
+                            "serviceType": {
+                              "type": "string",
+                              "defaultValue": "",
+                              "metadata": {
+                                "description": "The name of the container apps add-on to use. e.g. redis"
+                              }
+                            },
+                            "targetPort": {
+                              "type": "int",
+                              "defaultValue": 80,
+                              "metadata": {
+                                "description": "The target port for the container"
                               }
                             }
                           },
+                          "variables": {
+                            "usePrivateRegistry": "[and(not(empty(parameters('identityName'))), not(empty(parameters('containerRegistryName'))))]",
+                            "normalizedIdentityType": "[if(not(empty(parameters('identityName'))), 'UserAssigned', parameters('identityType'))]"
+                          },
                           "resources": [
                             {
-                              "type": "Microsoft.Web/sites/config",
-                              "apiVersion": "2022-03-01",
-                              "name": "[format('{0}/{1}', parameters('name'), 'appsettings')]",
-                              "properties": "[parameters('appSettings')]"
+                              "type": "Microsoft.App/containerApps",
+                              "apiVersion": "2023-04-01-preview",
+                              "name": "[parameters('name')]",
+                              "location": "[parameters('location')]",
+                              "tags": "[parameters('tags')]",
+                              "identity": {
+                                "type": "[variables('normalizedIdentityType')]",
+                                "userAssignedIdentities": "[if(and(not(empty(parameters('identityName'))), equals(variables('normalizedIdentityType'), 'UserAssigned')), createObject(format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName'))), createObject()), null())]"
+                              },
+                              "properties": {
+                                "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppsEnvironmentName'))]",
+                                "configuration": {
+                                  "activeRevisionsMode": "[parameters('revisionMode')]",
+                                  "ingress": "[if(parameters('ingressEnabled'), createObject('external', parameters('external'), 'targetPort', parameters('targetPort'), 'transport', 'auto', 'corsPolicy', createObject('allowedOrigins', union(createArray('https://portal.azure.com', 'https://ms.portal.azure.com'), parameters('allowedOrigins')))), null())]",
+                                  "dapr": "[if(parameters('daprEnabled'), createObject('enabled', true(), 'appId', parameters('daprAppId'), 'appProtocol', parameters('daprAppProtocol'), 'appPort', if(parameters('ingressEnabled'), parameters('targetPort'), 0)), createObject('enabled', false()))]",
+                                  "secrets": "[parameters('secrets')]",
+                                  "service": "[if(not(empty(parameters('serviceType'))), createObject('type', parameters('serviceType')), null())]",
+                                  "registries": "[if(variables('usePrivateRegistry'), createArray(createObject('server', format('{0}.azurecr.io', parameters('containerRegistryName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')))), createArray())]"
+                                },
+                                "template": {
+                                  "serviceBinds": "[if(not(empty(parameters('serviceBinds'))), parameters('serviceBinds'), null())]",
+                                  "containers": [
+                                    {
+                                      "image": "[if(not(empty(parameters('imageName'))), parameters('imageName'), 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest')]",
+                                      "name": "[parameters('containerName')]",
+                                      "env": "[parameters('env')]",
+                                      "resources": {
+                                        "cpu": "[json(parameters('containerCpuCoreCount'))]",
+                                        "memory": "[parameters('containerMemory')]"
+                                      }
+                                    }
+                                  ],
+                                  "scale": {
+                                    "minReplicas": "[parameters('containerMinReplicas')]",
+                                    "maxReplicas": "[parameters('containerMaxReplicas')]"
+                                  }
+                                }
+                              },
+                              "dependsOn": [
+                                "[resourceId('Microsoft.Resources/deployments', format('{0}-registry-access', deployment().name))]"
+                              ]
+                            },
+                            {
+                              "condition": "[variables('usePrivateRegistry')]",
+                              "type": "Microsoft.Resources/deployments",
+                              "apiVersion": "2022-09-01",
+                              "name": "[format('{0}-registry-access', deployment().name)]",
+                              "properties": {
+                                "expressionEvaluationOptions": {
+                                  "scope": "inner"
+                                },
+                                "mode": "Incremental",
+                                "parameters": {
+                                  "containerRegistryName": {
+                                    "value": "[parameters('containerRegistryName')]"
+                                  },
+                                  "principalId": "[if(variables('usePrivateRegistry'), createObject('value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), '2023-01-31').principalId), createObject('value', ''))]"
+                                },
+                                "template": {
+                                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                                  "contentVersion": "1.0.0.0",
+                                  "metadata": {
+                                    "_generator": {
+                                      "name": "bicep",
+                                      "version": "0.21.1.54444",
+                                      "templateHash": "3823587007918481878"
+                                    },
+                                    "description": "Assigns ACR Pull permissions to access an Azure Container Registry."
+                                  },
+                                  "parameters": {
+                                    "containerRegistryName": {
+                                      "type": "string"
+                                    },
+                                    "principalId": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "variables": {
+                                    "acrPullRole": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')]"
+                                  },
+                                  "resources": [
+                                    {
+                                      "type": "Microsoft.Authorization/roleAssignments",
+                                      "apiVersion": "2022-04-01",
+                                      "scope": "[format('Microsoft.ContainerRegistry/registries/{0}', parameters('containerRegistryName'))]",
+                                      "name": "[guid(subscription().id, resourceGroup().id, parameters('principalId'), variables('acrPullRole'))]",
+                                      "properties": {
+                                        "roleDefinitionId": "[variables('acrPullRole')]",
+                                        "principalType": "ServicePrincipal",
+                                        "principalId": "[parameters('principalId')]"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
                             }
-                          ]
+                          ],
+                          "outputs": {
+                            "defaultDomain": {
+                              "type": "string",
+                              "value": "[reference(resourceId('Microsoft.App/managedEnvironments', parameters('containerAppsEnvironmentName')), '2023-04-01-preview').defaultDomain]"
+                            },
+                            "identityPrincipalId": {
+                              "type": "string",
+                              "value": "[if(equals(variables('normalizedIdentityType'), 'None'), '', if(empty(parameters('identityName')), reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2023-04-01-preview', 'full').identity.principalId, reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), '2023-01-31').principalId))]"
+                            },
+                            "imageName": {
+                              "type": "string",
+                              "value": "[parameters('imageName')]"
+                            },
+                            "name": {
+                              "type": "string",
+                              "value": "[parameters('name')]"
+                            },
+                            "serviceBind": {
+                              "type": "object",
+                              "value": "[if(not(empty(parameters('serviceType'))), createObject('serviceId', resourceId('Microsoft.App/containerApps', parameters('name')), 'name', parameters('name')), createObject())]"
+                            },
+                            "uri": {
+                              "type": "string",
+                              "value": "[if(parameters('ingressEnabled'), format('https://{0}', reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2023-04-01-preview').configuration.ingress.fqdn), '')]"
+                            }
+                          }
                         }
-                      },
-                      "dependsOn": [
-                        "[resourceId('Microsoft.Web/sites', parameters('name'))]"
-                      ]
+                      }
                     }
                   ],
                   "outputs": {
-                    "identityPrincipalId": {
+                    "defaultDomain": {
                       "type": "string",
-                      "value": "[if(parameters('managedIdentity'), reference(resourceId('Microsoft.Web/sites', parameters('name')), '2022-03-01', 'full').identity.principalId, '')]"
+                      "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-update', deployment().name)), '2022-09-01').outputs.defaultDomain.value]"
+                    },
+                    "imageName": {
+                      "type": "string",
+                      "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-update', deployment().name)), '2022-09-01').outputs.imageName.value]"
                     },
                     "name": {
                       "type": "string",
-                      "value": "[parameters('name')]"
+                      "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-update', deployment().name)), '2022-09-01').outputs.name.value]"
                     },
                     "uri": {
                       "type": "string",
-                      "value": "[format('https://{0}', reference(resourceId('Microsoft.Web/sites', parameters('name')), '2022-03-01').defaultHostName)]"
+                      "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-update', deployment().name)), '2022-09-01').outputs.uri.value]"
                     }
                   }
                 }
@@ -1135,44 +1361,68 @@
             }
           ],
           "outputs": {
-            "SERVICE_API_IDENTITY_PRINCIPAL_ID": {
+            "SERVICE_WEB_IDENTITY_PRINCIPAL_ID": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-app-module', parameters('name'))), '2022-09-01').outputs.identityPrincipalId.value]"
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), '2023-01-31').principalId]"
             },
-            "SERVICE_API_NAME": {
+            "SERVICE_WEB_NAME": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-app-module', parameters('name'))), '2022-09-01').outputs.name.value]"
+              "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-container-app', parameters('serviceName'))), '2022-09-01').outputs.name.value]"
             },
-            "SERVICE_API_URI": {
+            "SERVICE_WEB_URI": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-app-module', parameters('name'))), '2022-09-01').outputs.uri.value]"
+              "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-container-app', parameters('serviceName'))), '2022-09-01').outputs.uri.value]"
+            },
+            "SERVICE_WEB_IMAGE_NAME": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-container-app', parameters('serviceName'))), '2022-09-01').outputs.imageName.value]"
             }
           }
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'appserviceplan')]",
-        "[resourceId('Microsoft.Resources/deployments', 'cosmos')]",
-        "[resourceId('Microsoft.Resources/deployments', 'keyvault')]",
-        "[resourceId('Microsoft.Resources/deployments', 'monitoring')]",
-        "[resourceId('Microsoft.Resources/deployments', 'web')]"
+        "[resourceId('Microsoft.Resources/deployments', 'api')]",
+        "[resourceId('Microsoft.Resources/deployments', 'container-apps')]",
+        "[resourceId('Microsoft.Resources/deployments', 'monitoring')]"
       ]
     },
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
-      "name": "api-keyvault-access",
-            "properties": {
+      "name": "api",
+      "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
         },
         "mode": "Incremental",
         "parameters": {
+          "name": "[if(not(empty(parameters('apiContainerAppName'))), createObject('value', parameters('apiContainerAppName')), createObject('value', format('{0}api-{1}', variables('abbrs').appContainerApps, variables('resourceToken'))))]",
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "identityName": {
+            "value": "[format('{0}api-{1}', variables('abbrs').managedIdentityUserAssignedIdentities, variables('resourceToken'))]"
+          },
+          "applicationInsightsName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'monitoring'), '2022-09-01').outputs.applicationInsightsName.value]"
+          },
+          "containerAppsEnvironmentName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'container-apps'), '2022-09-01').outputs.environmentName.value]"
+          },
+          "containerRegistryName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'container-apps'), '2022-09-01').outputs.registryName.value]"
+          },
           "keyVaultName": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyvault'), '2022-09-01').outputs.name.value]"
           },
-          "principalId": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'api'), '2022-09-01').outputs.SERVICE_API_IDENTITY_PRINCIPAL_ID.value]"
+          "corsAcaUrl": {
+            "value": "[format('https://{0}.{1}', variables('apiContainerAppNameOrDefault'), reference(resourceId('Microsoft.Resources/deployments', 'container-apps'), '2022-09-01').outputs.defaultDomain.value)]"
+          },
+          "exists": {
+            "value": "[parameters('apiAppExists')]"
           }
         },
         "template": {
@@ -1182,59 +1432,813 @@
             "_generator": {
               "name": "bicep",
               "version": "0.21.1.54444",
-              "templateHash": "7211460666347195796"
-            },
-            "description": "Assigns an Azure Key Vault access policy."
+              "templateHash": "5987090755712582365"
+            }
           },
           "parameters": {
             "name": {
+              "type": "string"
+            },
+            "location": {
               "type": "string",
-              "defaultValue": "add"
+              "defaultValue": "[resourceGroup().location]"
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            },
+            "identityName": {
+              "type": "string"
+            },
+            "applicationInsightsName": {
+              "type": "string"
+            },
+            "containerAppsEnvironmentName": {
+              "type": "string"
+            },
+            "containerRegistryName": {
+              "type": "string"
             },
             "keyVaultName": {
               "type": "string"
             },
-            "permissions": {
-              "type": "object",
-              "defaultValue": {
-                "secrets": [
-                  "get",
-                  "list"
-                ]
-              }
+            "serviceName": {
+              "type": "string",
+              "defaultValue": "api"
             },
-            "principalId": {
+            "corsAcaUrl": {
               "type": "string"
+            },
+            "exists": {
+              "type": "bool"
             }
           },
           "resources": [
             {
-              "type": "Microsoft.KeyVault/vaults/accessPolicies",
-              "apiVersion": "2022-07-01",
-              "name": "[format('{0}/{1}', parameters('keyVaultName'), parameters('name'))]",
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2023-01-31",
+              "name": "[parameters('identityName')]",
+              "location": "[parameters('location')]"
+            },
+            {
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2022-09-01",
+              "name": "api-keyvault-access",
               "properties": {
-                "accessPolicies": [
-                  {
-                    "objectId": "[parameters('principalId')]",
-                    "tenantId": "[subscription().tenantId]",
-                    "permissions": "[parameters('permissions')]"
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "keyVaultName": {
+                    "value": "[parameters('keyVaultName')]"
+                  },
+                  "principalId": {
+                    "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), '2023-01-31').principalId]"
                   }
-                ]
-              }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.21.1.54444",
+                      "templateHash": "7211460666347195796"
+                    },
+                    "description": "Assigns an Azure Key Vault access policy."
+                  },
+                  "parameters": {
+                    "name": {
+                      "type": "string",
+                      "defaultValue": "add"
+                    },
+                    "keyVaultName": {
+                      "type": "string"
+                    },
+                    "permissions": {
+                      "type": "object",
+                      "defaultValue": {
+                        "secrets": [
+                          "get",
+                          "list"
+                        ]
+                      }
+                    },
+                    "principalId": {
+                      "type": "string"
+                    }
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.KeyVault/vaults/accessPolicies",
+                      "apiVersion": "2022-07-01",
+                      "name": "[format('{0}/{1}', parameters('keyVaultName'), parameters('name'))]",
+                      "properties": {
+                        "accessPolicies": [
+                          {
+                            "objectId": "[parameters('principalId')]",
+                            "tenantId": "[subscription().tenantId]",
+                            "permissions": "[parameters('permissions')]"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2022-09-01",
+              "name": "[format('{0}-container-app', parameters('serviceName'))]",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "name": {
+                    "value": "[parameters('name')]"
+                  },
+                  "location": {
+                    "value": "[parameters('location')]"
+                  },
+                  "tags": {
+                    "value": "[union(parameters('tags'), createObject('azd-service-name', parameters('serviceName')))]"
+                  },
+                  "identityType": {
+                    "value": "UserAssigned"
+                  },
+                  "identityName": {
+                    "value": "[parameters('identityName')]"
+                  },
+                  "exists": {
+                    "value": "[parameters('exists')]"
+                  },
+                  "containerAppsEnvironmentName": {
+                    "value": "[parameters('containerAppsEnvironmentName')]"
+                  },
+                  "containerRegistryName": {
+                    "value": "[parameters('containerRegistryName')]"
+                  },
+                  "containerCpuCoreCount": {
+                    "value": "1.0"
+                  },
+                  "containerMemory": {
+                    "value": "2.0Gi"
+                  },
+                  "env": {
+                    "value": [
+                      {
+                        "name": "AZURE_CLIENT_ID",
+                        "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), '2023-01-31').clientId]"
+                      },
+                      {
+                        "name": "AZURE_KEY_VAULT_ENDPOINT",
+                        "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2022-07-01').vaultUri]"
+                      },
+                      {
+                        "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+                        "value": "[reference(resourceId('Microsoft.Insights/components', parameters('applicationInsightsName')), '2020-02-02').ConnectionString]"
+                      },
+                      {
+                        "name": "API_ALLOW_ORIGINS",
+                        "value": "[parameters('corsAcaUrl')]"
+                      }
+                    ]
+                  },
+                  "targetPort": {
+                    "value": 3100
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.21.1.54444",
+                      "templateHash": "18000323914714494769"
+                    },
+                    "description": "Creates or updates an existing Azure Container App."
+                  },
+                  "parameters": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "location": {
+                      "type": "string",
+                      "defaultValue": "[resourceGroup().location]"
+                    },
+                    "tags": {
+                      "type": "object",
+                      "defaultValue": {}
+                    },
+                    "containerAppsEnvironmentName": {
+                      "type": "string",
+                      "metadata": {
+                        "description": "The environment name for the container apps"
+                      }
+                    },
+                    "containerCpuCoreCount": {
+                      "type": "string",
+                      "defaultValue": "0.5",
+                      "metadata": {
+                        "description": "The number of CPU cores allocated to a single container instance, e.g., 0.5"
+                      }
+                    },
+                    "containerMaxReplicas": {
+                      "type": "int",
+                      "defaultValue": 10,
+                      "minValue": 1,
+                      "metadata": {
+                        "description": "The maximum number of replicas to run. Must be at least 1."
+                      }
+                    },
+                    "containerMemory": {
+                      "type": "string",
+                      "defaultValue": "1.0Gi",
+                      "metadata": {
+                        "description": "The amount of memory allocated to a single container instance, e.g., 1Gi"
+                      }
+                    },
+                    "containerMinReplicas": {
+                      "type": "int",
+                      "defaultValue": 1,
+                      "minValue": 1,
+                      "metadata": {
+                        "description": "The minimum number of replicas to run. Must be at least 1."
+                      }
+                    },
+                    "containerName": {
+                      "type": "string",
+                      "defaultValue": "main",
+                      "metadata": {
+                        "description": "The name of the container"
+                      }
+                    },
+                    "containerRegistryName": {
+                      "type": "string",
+                      "defaultValue": "",
+                      "metadata": {
+                        "description": "The name of the container registry"
+                      }
+                    },
+                    "daprAppProtocol": {
+                      "type": "string",
+                      "defaultValue": "http",
+                      "allowedValues": [
+                        "http",
+                        "grpc"
+                      ],
+                      "metadata": {
+                        "description": "The protocol used by Dapr to connect to the app, e.g., HTTP or gRPC"
+                      }
+                    },
+                    "daprEnabled": {
+                      "type": "bool",
+                      "defaultValue": false,
+                      "metadata": {
+                        "description": "Enable or disable Dapr for the container app"
+                      }
+                    },
+                    "daprAppId": {
+                      "type": "string",
+                      "defaultValue": "[parameters('containerName')]",
+                      "metadata": {
+                        "description": "The Dapr app ID"
+                      }
+                    },
+                    "exists": {
+                      "type": "bool",
+                      "defaultValue": false,
+                      "metadata": {
+                        "description": "Specifies if the resource already exists"
+                      }
+                    },
+                    "ingressEnabled": {
+                      "type": "bool",
+                      "defaultValue": true,
+                      "metadata": {
+                        "description": "Specifies if Ingress is enabled for the container app"
+                      }
+                    },
+                    "identityType": {
+                      "type": "string",
+                      "defaultValue": "None",
+                      "allowedValues": [
+                        "None",
+                        "SystemAssigned",
+                        "UserAssigned"
+                      ],
+                      "metadata": {
+                        "description": "The type of identity for the resource"
+                      }
+                    },
+                    "identityName": {
+                      "type": "string",
+                      "defaultValue": "",
+                      "metadata": {
+                        "description": "The name of the user-assigned identity"
+                      }
+                    },
+                    "imageName": {
+                      "type": "string",
+                      "defaultValue": "",
+                      "metadata": {
+                        "description": "The name of the container image"
+                      }
+                    },
+                    "secrets": {
+                      "type": "array",
+                      "defaultValue": [],
+                      "metadata": {
+                        "description": "The secrets required for the container"
+                      }
+                    },
+                    "env": {
+                      "type": "array",
+                      "defaultValue": [],
+                      "metadata": {
+                        "description": "The environment variables for the container"
+                      }
+                    },
+                    "external": {
+                      "type": "bool",
+                      "defaultValue": true,
+                      "metadata": {
+                        "description": "Specifies if the resource ingress is exposed externally"
+                      }
+                    },
+                    "serviceBinds": {
+                      "type": "array",
+                      "defaultValue": [],
+                      "metadata": {
+                        "description": "The service binds associated with the container"
+                      }
+                    },
+                    "targetPort": {
+                      "type": "int",
+                      "defaultValue": 80,
+                      "metadata": {
+                        "description": "The target port for the container"
+                      }
+                    }
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.Resources/deployments",
+                      "apiVersion": "2022-09-01",
+                      "name": "[format('{0}-update', deployment().name)]",
+                      "properties": {
+                        "expressionEvaluationOptions": {
+                          "scope": "inner"
+                        },
+                        "mode": "Incremental",
+                        "parameters": {
+                          "name": {
+                            "value": "[parameters('name')]"
+                          },
+                          "location": {
+                            "value": "[parameters('location')]"
+                          },
+                          "tags": {
+                            "value": "[parameters('tags')]"
+                          },
+                          "identityType": {
+                            "value": "[parameters('identityType')]"
+                          },
+                          "identityName": {
+                            "value": "[parameters('identityName')]"
+                          },
+                          "ingressEnabled": {
+                            "value": "[parameters('ingressEnabled')]"
+                          },
+                          "containerName": {
+                            "value": "[parameters('containerName')]"
+                          },
+                          "containerAppsEnvironmentName": {
+                            "value": "[parameters('containerAppsEnvironmentName')]"
+                          },
+                          "containerRegistryName": {
+                            "value": "[parameters('containerRegistryName')]"
+                          },
+                          "containerCpuCoreCount": {
+                            "value": "[parameters('containerCpuCoreCount')]"
+                          },
+                          "containerMemory": {
+                            "value": "[parameters('containerMemory')]"
+                          },
+                          "containerMinReplicas": {
+                            "value": "[parameters('containerMinReplicas')]"
+                          },
+                          "containerMaxReplicas": {
+                            "value": "[parameters('containerMaxReplicas')]"
+                          },
+                          "daprEnabled": {
+                            "value": "[parameters('daprEnabled')]"
+                          },
+                          "daprAppId": {
+                            "value": "[parameters('daprAppId')]"
+                          },
+                          "daprAppProtocol": {
+                            "value": "[parameters('daprAppProtocol')]"
+                          },
+                          "secrets": {
+                            "value": "[parameters('secrets')]"
+                          },
+                          "external": {
+                            "value": "[parameters('external')]"
+                          },
+                          "env": {
+                            "value": "[parameters('env')]"
+                          },
+                          "imageName": "[if(not(empty(parameters('imageName'))), createObject('value', parameters('imageName')), if(parameters('exists'), createObject('value', reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2023-04-01-preview').template.containers[0].image), createObject('value', '')))]",
+                          "targetPort": {
+                            "value": "[parameters('targetPort')]"
+                          },
+                          "serviceBinds": {
+                            "value": "[parameters('serviceBinds')]"
+                          }
+                        },
+                        "template": {
+                          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                          "contentVersion": "1.0.0.0",
+                          "metadata": {
+                            "_generator": {
+                              "name": "bicep",
+                              "version": "0.21.1.54444",
+                              "templateHash": "544544143713108597"
+                            },
+                            "description": "Creates a container app in an Azure Container App environment."
+                          },
+                          "parameters": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "location": {
+                              "type": "string",
+                              "defaultValue": "[resourceGroup().location]"
+                            },
+                            "tags": {
+                              "type": "object",
+                              "defaultValue": {}
+                            },
+                            "allowedOrigins": {
+                              "type": "array",
+                              "defaultValue": [],
+                              "metadata": {
+                                "description": "Allowed origins"
+                              }
+                            },
+                            "containerAppsEnvironmentName": {
+                              "type": "string",
+                              "metadata": {
+                                "description": "Name of the environment for container apps"
+                              }
+                            },
+                            "containerCpuCoreCount": {
+                              "type": "string",
+                              "defaultValue": "0.5",
+                              "metadata": {
+                                "description": "CPU cores allocated to a single container instance, e.g., 0.5"
+                              }
+                            },
+                            "containerMaxReplicas": {
+                              "type": "int",
+                              "defaultValue": 10,
+                              "minValue": 1,
+                              "metadata": {
+                                "description": "The maximum number of replicas to run. Must be at least 1."
+                              }
+                            },
+                            "containerMemory": {
+                              "type": "string",
+                              "defaultValue": "1.0Gi",
+                              "metadata": {
+                                "description": "Memory allocated to a single container instance, e.g., 1Gi"
+                              }
+                            },
+                            "containerMinReplicas": {
+                              "type": "int",
+                              "defaultValue": 1,
+                              "metadata": {
+                                "description": "The minimum number of replicas to run. Must be at least 1."
+                              }
+                            },
+                            "containerName": {
+                              "type": "string",
+                              "defaultValue": "main",
+                              "metadata": {
+                                "description": "The name of the container"
+                              }
+                            },
+                            "containerRegistryName": {
+                              "type": "string",
+                              "defaultValue": "",
+                              "metadata": {
+                                "description": "The name of the container registry"
+                              }
+                            },
+                            "daprAppProtocol": {
+                              "type": "string",
+                              "defaultValue": "http",
+                              "allowedValues": [
+                                "http",
+                                "grpc"
+                              ],
+                              "metadata": {
+                                "description": "The protocol used by Dapr to connect to the app, e.g., http or grpc"
+                              }
+                            },
+                            "daprAppId": {
+                              "type": "string",
+                              "defaultValue": "[parameters('containerName')]",
+                              "metadata": {
+                                "description": "The Dapr app ID"
+                              }
+                            },
+                            "daprEnabled": {
+                              "type": "bool",
+                              "defaultValue": false,
+                              "metadata": {
+                                "description": "Enable Dapr"
+                              }
+                            },
+                            "env": {
+                              "type": "array",
+                              "defaultValue": [],
+                              "metadata": {
+                                "description": "The environment variables for the container"
+                              }
+                            },
+                            "external": {
+                              "type": "bool",
+                              "defaultValue": true,
+                              "metadata": {
+                                "description": "Specifies if the resource ingress is exposed externally"
+                              }
+                            },
+                            "identityName": {
+                              "type": "string",
+                              "defaultValue": "",
+                              "metadata": {
+                                "description": "The name of the user-assigned identity"
+                              }
+                            },
+                            "identityType": {
+                              "type": "string",
+                              "defaultValue": "None",
+                              "allowedValues": [
+                                "None",
+                                "SystemAssigned",
+                                "UserAssigned"
+                              ],
+                              "metadata": {
+                                "description": "The type of identity for the resource"
+                              }
+                            },
+                            "imageName": {
+                              "type": "string",
+                              "defaultValue": "",
+                              "metadata": {
+                                "description": "The name of the container image"
+                              }
+                            },
+                            "ingressEnabled": {
+                              "type": "bool",
+                              "defaultValue": true,
+                              "metadata": {
+                                "description": "Specifies if Ingress is enabled for the container app"
+                              }
+                            },
+                            "revisionMode": {
+                              "type": "string",
+                              "defaultValue": "Single"
+                            },
+                            "secrets": {
+                              "type": "array",
+                              "defaultValue": [],
+                              "metadata": {
+                                "description": "The secrets required for the container"
+                              }
+                            },
+                            "serviceBinds": {
+                              "type": "array",
+                              "defaultValue": [],
+                              "metadata": {
+                                "description": "The service binds associated with the container"
+                              }
+                            },
+                            "serviceType": {
+                              "type": "string",
+                              "defaultValue": "",
+                              "metadata": {
+                                "description": "The name of the container apps add-on to use. e.g. redis"
+                              }
+                            },
+                            "targetPort": {
+                              "type": "int",
+                              "defaultValue": 80,
+                              "metadata": {
+                                "description": "The target port for the container"
+                              }
+                            }
+                          },
+                          "variables": {
+                            "usePrivateRegistry": "[and(not(empty(parameters('identityName'))), not(empty(parameters('containerRegistryName'))))]",
+                            "normalizedIdentityType": "[if(not(empty(parameters('identityName'))), 'UserAssigned', parameters('identityType'))]"
+                          },
+                          "resources": [
+                            {
+                              "type": "Microsoft.App/containerApps",
+                              "apiVersion": "2023-04-01-preview",
+                              "name": "[parameters('name')]",
+                              "location": "[parameters('location')]",
+                              "tags": "[parameters('tags')]",
+                              "identity": {
+                                "type": "[variables('normalizedIdentityType')]",
+                                "userAssignedIdentities": "[if(and(not(empty(parameters('identityName'))), equals(variables('normalizedIdentityType'), 'UserAssigned')), createObject(format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName'))), createObject()), null())]"
+                              },
+                              "properties": {
+                                "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppsEnvironmentName'))]",
+                                "configuration": {
+                                  "activeRevisionsMode": "[parameters('revisionMode')]",
+                                  "ingress": "[if(parameters('ingressEnabled'), createObject('external', parameters('external'), 'targetPort', parameters('targetPort'), 'transport', 'auto', 'corsPolicy', createObject('allowedOrigins', union(createArray('https://portal.azure.com', 'https://ms.portal.azure.com'), parameters('allowedOrigins')))), null())]",
+                                  "dapr": "[if(parameters('daprEnabled'), createObject('enabled', true(), 'appId', parameters('daprAppId'), 'appProtocol', parameters('daprAppProtocol'), 'appPort', if(parameters('ingressEnabled'), parameters('targetPort'), 0)), createObject('enabled', false()))]",
+                                  "secrets": "[parameters('secrets')]",
+                                  "service": "[if(not(empty(parameters('serviceType'))), createObject('type', parameters('serviceType')), null())]",
+                                  "registries": "[if(variables('usePrivateRegistry'), createArray(createObject('server', format('{0}.azurecr.io', parameters('containerRegistryName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')))), createArray())]"
+                                },
+                                "template": {
+                                  "serviceBinds": "[if(not(empty(parameters('serviceBinds'))), parameters('serviceBinds'), null())]",
+                                  "containers": [
+                                    {
+                                      "image": "[if(not(empty(parameters('imageName'))), parameters('imageName'), 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest')]",
+                                      "name": "[parameters('containerName')]",
+                                      "env": "[parameters('env')]",
+                                      "resources": {
+                                        "cpu": "[json(parameters('containerCpuCoreCount'))]",
+                                        "memory": "[parameters('containerMemory')]"
+                                      }
+                                    }
+                                  ],
+                                  "scale": {
+                                    "minReplicas": "[parameters('containerMinReplicas')]",
+                                    "maxReplicas": "[parameters('containerMaxReplicas')]"
+                                  }
+                                }
+                              },
+                              "dependsOn": [
+                                "[resourceId('Microsoft.Resources/deployments', format('{0}-registry-access', deployment().name))]"
+                              ]
+                            },
+                            {
+                              "condition": "[variables('usePrivateRegistry')]",
+                              "type": "Microsoft.Resources/deployments",
+                              "apiVersion": "2022-09-01",
+                              "name": "[format('{0}-registry-access', deployment().name)]",
+                              "properties": {
+                                "expressionEvaluationOptions": {
+                                  "scope": "inner"
+                                },
+                                "mode": "Incremental",
+                                "parameters": {
+                                  "containerRegistryName": {
+                                    "value": "[parameters('containerRegistryName')]"
+                                  },
+                                  "principalId": "[if(variables('usePrivateRegistry'), createObject('value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), '2023-01-31').principalId), createObject('value', ''))]"
+                                },
+                                "template": {
+                                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                                  "contentVersion": "1.0.0.0",
+                                  "metadata": {
+                                    "_generator": {
+                                      "name": "bicep",
+                                      "version": "0.21.1.54444",
+                                      "templateHash": "3823587007918481878"
+                                    },
+                                    "description": "Assigns ACR Pull permissions to access an Azure Container Registry."
+                                  },
+                                  "parameters": {
+                                    "containerRegistryName": {
+                                      "type": "string"
+                                    },
+                                    "principalId": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "variables": {
+                                    "acrPullRole": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')]"
+                                  },
+                                  "resources": [
+                                    {
+                                      "type": "Microsoft.Authorization/roleAssignments",
+                                      "apiVersion": "2022-04-01",
+                                      "scope": "[format('Microsoft.ContainerRegistry/registries/{0}', parameters('containerRegistryName'))]",
+                                      "name": "[guid(subscription().id, resourceGroup().id, parameters('principalId'), variables('acrPullRole'))]",
+                                      "properties": {
+                                        "roleDefinitionId": "[variables('acrPullRole')]",
+                                        "principalType": "ServicePrincipal",
+                                        "principalId": "[parameters('principalId')]"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          ],
+                          "outputs": {
+                            "defaultDomain": {
+                              "type": "string",
+                              "value": "[reference(resourceId('Microsoft.App/managedEnvironments', parameters('containerAppsEnvironmentName')), '2023-04-01-preview').defaultDomain]"
+                            },
+                            "identityPrincipalId": {
+                              "type": "string",
+                              "value": "[if(equals(variables('normalizedIdentityType'), 'None'), '', if(empty(parameters('identityName')), reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2023-04-01-preview', 'full').identity.principalId, reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), '2023-01-31').principalId))]"
+                            },
+                            "imageName": {
+                              "type": "string",
+                              "value": "[parameters('imageName')]"
+                            },
+                            "name": {
+                              "type": "string",
+                              "value": "[parameters('name')]"
+                            },
+                            "serviceBind": {
+                              "type": "object",
+                              "value": "[if(not(empty(parameters('serviceType'))), createObject('serviceId', resourceId('Microsoft.App/containerApps', parameters('name')), 'name', parameters('name')), createObject())]"
+                            },
+                            "uri": {
+                              "type": "string",
+                              "value": "[if(parameters('ingressEnabled'), format('https://{0}', reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2023-04-01-preview').configuration.ingress.fqdn), '')]"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ],
+                  "outputs": {
+                    "defaultDomain": {
+                      "type": "string",
+                      "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-update', deployment().name)), '2022-09-01').outputs.defaultDomain.value]"
+                    },
+                    "imageName": {
+                      "type": "string",
+                      "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-update', deployment().name)), '2022-09-01').outputs.imageName.value]"
+                    },
+                    "name": {
+                      "type": "string",
+                      "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-update', deployment().name)), '2022-09-01').outputs.name.value]"
+                    },
+                    "uri": {
+                      "type": "string",
+                      "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-update', deployment().name)), '2022-09-01').outputs.uri.value]"
+                    }
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName'))]",
+                "[resourceId('Microsoft.Resources/deployments', 'api-keyvault-access')]"
+              ]
             }
-          ]
+          ],
+          "outputs": {
+            "SERVICE_API_IDENTITY_PRINCIPAL_ID": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), '2023-01-31').principalId]"
+            },
+            "SERVICE_API_NAME": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-container-app', parameters('serviceName'))), '2022-09-01').outputs.name.value]"
+            },
+            "SERVICE_API_URI": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-container-app', parameters('serviceName'))), '2022-09-01').outputs.uri.value]"
+            },
+            "SERVICE_API_IMAGE_NAME": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-container-app', parameters('serviceName'))), '2022-09-01').outputs.imageName.value]"
+            }
+          }
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'api')]",
-        "[resourceId('Microsoft.Resources/deployments', 'keyvault')]"
+        "[resourceId('Microsoft.Resources/deployments', 'container-apps')]",
+        "[resourceId('Microsoft.Resources/deployments', 'keyvault')]",
+        "[resourceId('Microsoft.Resources/deployments', 'monitoring')]"
       ]
     },
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "cosmos",
-            "properties": {
+      "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
         },
@@ -1666,93 +2670,8 @@
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
-      "name": "appserviceplan",
-            "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "name": "[if(not(empty(parameters('appServicePlanName'))), createObject('value', parameters('appServicePlanName')), createObject('value', format('{0}{1}', variables('abbrs').webServerFarms, variables('resourceToken'))))]",
-          "location": {
-            "value": "[parameters('location')]"
-          },
-          "tags": {
-            "value": "[variables('tags')]"
-          },
-          "sku": {
-            "value": {
-              "name": "B1"
-            }
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.21.1.54444",
-              "templateHash": "17869526305870464556"
-            },
-            "description": "Creates an Azure App Service plan."
-          },
-          "parameters": {
-            "name": {
-              "type": "string"
-            },
-            "location": {
-              "type": "string",
-              "defaultValue": "[resourceGroup().location]"
-            },
-            "tags": {
-              "type": "object",
-              "defaultValue": {}
-            },
-            "kind": {
-              "type": "string",
-              "defaultValue": ""
-            },
-            "reserved": {
-              "type": "bool",
-              "defaultValue": true
-            },
-            "sku": {
-              "type": "object"
-            }
-          },
-          "resources": [
-            {
-              "type": "Microsoft.Web/serverfarms",
-              "apiVersion": "2022-03-01",
-              "name": "[parameters('name')]",
-              "location": "[parameters('location')]",
-              "tags": "[parameters('tags')]",
-              "sku": "[parameters('sku')]",
-              "kind": "[parameters('kind')]",
-              "properties": {
-                "reserved": "[parameters('reserved')]"
-              }
-            }
-          ],
-          "outputs": {
-            "id": {
-              "type": "string",
-              "value": "[resourceId('Microsoft.Web/serverfarms', parameters('name'))]"
-            },
-            "name": {
-              "type": "string",
-              "value": "[parameters('name')]"
-            }
-          }
-        }
-      }
-    },
-    {
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
       "name": "keyvault",
-            "properties": {
+      "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
         },
@@ -1831,7 +2750,7 @@
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "monitoring",
-            "properties": {
+      "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
         },
@@ -3348,7 +4267,7 @@
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "apim-deployment",
-            "properties": {
+      "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
         },
@@ -3489,7 +4408,7 @@
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "apim-api-deployment",
-            "properties": {
+      "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
         },
@@ -3513,9 +4432,6 @@
           },
           "apiBackendUrl": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'api'), '2022-09-01').outputs.SERVICE_API_URI.value]"
-          },
-          "apiAppName": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'api'), '2022-09-01').outputs.SERVICE_API_NAME.value]"
           }
         },
         "template": {
@@ -3699,9 +4615,29 @@
       "type": "string",
       "value": "[reference(resourceId('Microsoft.Resources/deployments', 'cosmos'), '2022-09-01').outputs.databaseName.value]"
     },
+    "API_CORS_ACA_URL": {
+      "type": "string",
+      "value": "[format('https://{0}.{1}', variables('apiContainerAppNameOrDefault'), reference(resourceId('Microsoft.Resources/deployments', 'container-apps'), '2022-09-01').outputs.defaultDomain.value)]"
+    },
     "APPLICATIONINSIGHTS_CONNECTION_STRING": {
       "type": "string",
       "value": "[reference(resourceId('Microsoft.Resources/deployments', 'monitoring'), '2022-09-01').outputs.applicationInsightsConnectionString.value]"
+    },
+    "APPLICATIONINSIGHTS_NAME": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'monitoring'), '2022-09-01').outputs.applicationInsightsName.value]"
+    },
+    "AZURE_CONTAINER_ENVIRONMENT_NAME": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'container-apps'), '2022-09-01').outputs.environmentName.value]"
+    },
+    "AZURE_CONTAINER_REGISTRY_ENDPOINT": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'container-apps'), '2022-09-01').outputs.registryLoginServer.value]"
+    },
+    "AZURE_CONTAINER_REGISTRY_NAME": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'container-apps'), '2022-09-01').outputs.registryName.value]"
     },
     "AZURE_KEY_VAULT_ENDPOINT": {
       "type": "string",
@@ -3730,6 +4666,14 @@
     "REACT_APP_WEB_BASE_URL": {
       "type": "string",
       "value": "[reference(resourceId('Microsoft.Resources/deployments', 'web'), '2022-09-01').outputs.SERVICE_WEB_URI.value]"
+    },
+    "SERVICE_API_NAME": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'api'), '2022-09-01').outputs.SERVICE_API_NAME.value]"
+    },
+    "SERVICE_WEB_NAME": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'web'), '2022-09-01').outputs.SERVICE_WEB_NAME.value]"
     },
     "USE_APIM": {
       "type": "bool",

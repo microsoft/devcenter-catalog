@@ -9,12 +9,15 @@
     }
   },
   "parameters": {
-    "environmentName": {
+    "runtimeType": {
       "type": "string",
-      "minLength": 1,
-      "maxLength": 64,
+      "allowedValues": [
+        "python",
+        "nodejs",
+        "java"
+    ],
       "metadata": {
-        "description": "Name of the the environment which is used to generate a short unique hash used in all resources."
+        "description": "runtimeType of the Function App runtime,eg python,nodejs."
       }
     },
     "location": {
@@ -232,12 +235,12 @@
       "webStaticSites": "stapp-"
     },
     "abbrs": "[variables('$fxv#0')]",
-    "resourceToken": "[toLower(uniqueString(subscription().id, parameters('environmentName'), parameters('location')))]",
+    "resourceToken": "[toLower(uniqueString(subscription().id, parameters('runtimeType'), parameters('location')))]",
     "tags": {
-      "azd-env-name": "[parameters('environmentName')]"
+      "azd-env-name": "[parameters('runtimeType')]"
     },
-    "runtimeVersion": "18",
-    "runtimeName":"node"
+    "runtimeVersion": "[if(equals(parameters('runtimeType'), 'python'), '3.8','18')]",
+    "runtimeName": "[if(equals(parameters('runtimeType'), 'python'), 'python','node')]"
   },
   "resources": [
     {
