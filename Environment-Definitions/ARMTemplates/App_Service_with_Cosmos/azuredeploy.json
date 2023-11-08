@@ -11,6 +11,7 @@
   "parameters": {
     "repoUrl": {
       "type": "string",
+      "defaultValue":"https://github.com/azure-samples/todo-java-mongo",
       "allowedValues": [
           "https://github.com/azure-samples/todo-java-mongo",
           "https://github.com/azure-samples/todo-nodejs-mongo",
@@ -231,7 +232,7 @@
       "webStaticSites": "stapp-"
     },
     "abbrs": "[variables('$fxv#0')]",
-    "resourceToken": "[toLower(uniqueString(subscription().id, parameters('runtimeType'), parameters('location')))]",
+    "resourceToken": "[toLower(uniqueString(subscription().id, resourceGroup().name , parameters('location')))]",
     "tags": {
       "azd-env-name": "[parameters('runtimeType')]"
     },
@@ -239,11 +240,11 @@
     "runtimeVersion":"[if(equals(parameters('runtimeType'), 'java'), '17-java17', if(equals(parameters('runtimeType'), 'python'), '3.10','18-lts'))]"
   },
   "resources": [
-        {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "web",
-            "properties": {
+      "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
         },

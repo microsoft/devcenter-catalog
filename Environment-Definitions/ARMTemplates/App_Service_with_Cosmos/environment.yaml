@@ -20,7 +20,6 @@ parameters:
     name: repoUrl
     type: string
     description: Path the the application source code
-    default: "https://github.com/azure-samples/todo-nodejs-mongo"
     allowed:
       - "https://github.com/azure-samples/todo-java-mongo"
       - "https://github.com/azure-samples/todo-nodejs-mongo"

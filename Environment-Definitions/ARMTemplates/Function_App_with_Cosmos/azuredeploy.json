@@ -30,6 +30,7 @@
     },
     "repoUrl": {
       "type": "string",
+      "defaultValue":"https://github.com/azure-samples/todo-nodejs-mongo-swa-func",
       "allowedValues": [
           "https://github.com/azure-samples/todo-nodejs-mongo-swa-func",
           "https://github.com/azure-samples/todo-python-mongo-swa-func"
@@ -235,7 +236,7 @@
       "webStaticSites": "stapp-"
     },
     "abbrs": "[variables('$fxv#0')]",
-    "resourceToken": "[toLower(uniqueString(subscription().id, parameters('runtimeType'), parameters('location')))]",
+    "resourceToken": "[toLower(uniqueString(subscription().id, resourceGroup().name, parameters('location')))]",
     "tags": {
       "azd-env-name": "[parameters('runtimeType')]"
     },
