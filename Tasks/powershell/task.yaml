@@ -3,7 +3,7 @@
 name: powershell
 description: Execute a powershell command.
 author: Microsoft Corporation
-command: ".\\Run-Command.ps1 -Command {{command}} -WorkingDirectory {{workingDirectory}}"
+command: ".\\Run-Command.ps1 -Command {{command}} -WorkingDirectory {{workingDirectory}} -RunAsUser {{runAsUser}}"
 inputs:
   command:
     type: string
@@ -15,6 +15,11 @@ inputs:
     defaultValue: ""
     required: false
     description: The working directory to execute the command in.
+  runAsUser:
+    type: boolean
+    defaultValue: false
+    required: false
+    description: execute the command when the user login the devbox at the first time.
 documentation:
   notes: This task is used to execute a powershell command.
   examples:
