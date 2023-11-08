@@ -1,5 +1,0 @@
-name: Empty
-summary: Empty environment
-description: Deploys an empty environment
-runner: ARM
-templatePath: azuredeploy.json

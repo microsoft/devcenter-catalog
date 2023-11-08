@@ -1,5 +1,0 @@
-name: StorageAccount
-summary: Environment that deploys a storage account
-description: Deploys an environment with a storage account
-runner: ARM
-templatePath: azuredeploy.json
