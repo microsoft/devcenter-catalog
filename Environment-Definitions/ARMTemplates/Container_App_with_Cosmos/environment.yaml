@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=https://github.com/Azure/deployment-environments/releases/download/2022-11-11-preview/manifest.schema.json
-name: Conatiner-App-with-Cosmos
+name: Container-App-with-Cosmos
 version: 1.0.0
 summary: Azure Container APP with Cosmos Environment
 description: Deploys an Azure Container App with Cosmos, it is compatible with azd.
