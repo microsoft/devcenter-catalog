@@ -17,7 +17,7 @@
         "java"
     ],
       "metadata": {
-        "description": "runtimeType of the Function App runtime,eg python,nodejs."
+        "description": "Runtime Type of the Function App runtime,eg python or nodejs."
       }
     },
     "location": {

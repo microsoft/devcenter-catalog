@@ -8,8 +8,8 @@ templatePath: azuredeploy.json
 
 parameters:
   - id: runtimeType
-    name: runtimeType
-    description: 'runtimeType of the App Service runtime,eg python,nodejs,java.'
+    name: Runtime Type
+    description: 'Runtime Type of the App Service runtime,eg python, nodejs or java.'
     type: string
     required: true
     allowed:

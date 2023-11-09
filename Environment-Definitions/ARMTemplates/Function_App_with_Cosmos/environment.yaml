@@ -8,8 +8,8 @@ templatePath: azuredeploy.json
 
 parameters:
   - id: runtimeType
-    name: runtimeType
-    description: 'runtimeType of the Function App runtime,eg python,nodejs,java.'
+    name: Runtime Type
+    description: 'Runtime Type of the Function App runtime,eg python or nodejs'
     type: string
     required: true
     allowed:

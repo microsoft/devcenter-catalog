@@ -29,7 +29,7 @@
         "java"
     ],
       "metadata": {
-        "description": "runtimeType of the App Service runtime,eg python,nodejs,java."
+        "description": "Runtime Type of the App Service runtime,eg python, nodejs or java."
       }
     },
     "location": {

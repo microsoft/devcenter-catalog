@@ -17,7 +17,7 @@
         "java"
     ],
       "metadata": {
-        "description": "runtimeType of the Conatiner App runtime,eg python,nodejs,java."
+        "description": "Runtime Type of the Conatiner App runtime,eg python, nodejs or java."
       }
     },
     "location": {
