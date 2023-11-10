@@ -1,0 +1,34 @@
+# This is a simple powershell command execution task for Dev Box.
+
+name: ps-user
+description: Execute a powershell command.
+author: Microsoft Corporation
+command: ".\\Run-Command.ps1 -Command {{command}} -WorkingDirectory {{workingDirectory}} -RunAsUser {{runAsUser}}"
+inputs:
+  command:
+    type: string
+    defaultValue: ""
+    required: true
+    description: The command to execute.
+  workingDirectory:
+    type: string
+    defaultValue: ""
+    required: false
+    description: The working directory to execute the command in.
+  runAsUser:
+    type: boolean
+    defaultValue: false
+    required: false
+    description: execute the command when the user login the devbox at the first time.
+documentation:
+  notes: This task is used to execute a powershell command.
+  examples:
+    - task: powershell
+      description: print hello world
+      inputs:
+        command: "Write-Host 'hello, world!'"
+    - task: powershell
+      description: run script
+      inputs:
+        command: "./script.ps1"
+        workingDirectory: C:\\provisioning\\temp
