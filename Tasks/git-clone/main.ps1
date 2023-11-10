@@ -117,16 +117,62 @@ function InstallPS7 {
 }
 
 function InstallWinGet {
-    Write-Host "Installing WinGet"
-    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope AllUsers
-    Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
+    # check if the Microsoft.Winget.Configuration module is installed
+    if (!(Get-Module -ListAvailable -Name Microsoft.Winget.Client)) {
+        Write-Host "Installing WinGet"
+        Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope AllUsers
+        Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
 
-    Install-Module Microsoft.WinGet.Client -Scope AllUsers
+        Install-Module Microsoft.WinGet.Client -Scope AllUsers
 
-    pwsh.exe -MTA -Command "Install-Module Microsoft.WinGet.Configuration -AllowPrerelease -Scope AllUsers"
-    Write-Host "Done Installing WinGet"
+        pwsh.exe -MTA -Command "Install-Module Microsoft.WinGet.Configuration -AllowPrerelease -Scope AllUsers"
+        Write-Host "Done Installing WinGet"
+        return $true
+    }
+    else {
+        Write-Host "WinGet is already installed"
+        return $false
+    }
 }
 
+# install git if it's not already installed
+$installed_winget = $false
+if (!(Get-Command git -ErrorAction SilentlyContinue)) {
+    # if winget is available, use it to install git
+    if (Get-Command winget -ErrorAction SilentlyContinue) {
+        Write-Host "Installing git with winget"
+        winget install --id Git.Git -e --source winget
+        Write-Host "'winget install --id Git.Git -e --source winget' exited with code: $($LASTEXITCODE)"
+    }
+    # if choco is available, use it to install git
+    elseif (Get-Command choco -ErrorAction SilentlyContinue) {
+        Write-Host "Installing git with choco"
+        choco install git -y
+        Write-Host "'choco install git -y' exited with code: $($LASTEXITCODE)"
+    }
+    else {
+        # if neither winget nor choco are available, install winget and use that to install git
+        InstallPS7
+        $installed_winget = InstallWinGet
+        Write-Host "Installing git with Install-WinGetPackage"
+        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe -MTA -Command `"Install-WinGetPackage -Id Git.Git`""}
+        if ($processCreation.ReturnValue -ne 0) {
+            Write-Host "Failed to create process to install git with Install-WinGetPackage, error code $($processCreation.ReturnValue)"
+            exit $processCreation.ReturnValue
+        }
+        Write-Host "Waiting for Install-WinGetPackage (pid: $($processCreation.ProcessId)) to complete"
+        $process = Get-Process -Id $processCreation.ProcessId
+        $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
+        $process.WaitForExit()
+        Write-Host "'Install-WinGetPackage -Id Git.Git' exited with code: $($process.ExitCode)"
+        if ($process.ExitCode -ne 0) {
+            Write-Host "Failed to install git with Install-WinGetPackage, error code $($process.ExitCode)"
+            exit $process.ExitCode
+        }
+    }
+}
+
+$repoCloned = $false
 if ($Pat) {
     # When a PAT is provided, we'll attempt to clone the repository during provisioning time.
     # If this fails, we'll try again when the user logs in.
@@ -153,7 +199,11 @@ if ($Pat) {
             }
             # If the code reaches this point, we've successfully cloned the repository.
             Write-Host "Successfully cloned repository: $($RepositoryUrl) to directory: $($Directory)"
-            exit 0 #Success!
+            $repoCloned = $true
+            if (!$installed_winget)
+            {
+                exit 0 #Success!
+            }
         }
         catch {
             Write-Error $_
@@ -197,7 +247,11 @@ if ($RepositoryUrl -match "github.com") {
             }
             # If the code reaches this point, we've successfully cloned the repository.
             Write-Host "Successfully cloned repository: $($RepositoryUrl) to directory: $($Directory)"
-            exit 0 #Success!
+            $repoCloned = $true
+            if (!$installed_winget)
+            {
+                exit 0 #Success!
+            }
         }
         catch {
             Write-Error $_
@@ -217,10 +271,17 @@ if ($RepositoryUrl -match "github.com") {
 
 }
 
-
-
 # If the code reaches this point, we failed to clone the repository during provisioning time or
 # a PAT was not provided. We'll queue the clone attempt for user login.
+
+# install powershell 7
+InstallPS7
+
+if (!(Test-Path -PathType Leaf "$($CustomizationScriptsDir)\$($LockFile)")) {
+    SetupScheduledTasks
+}
+
+Write-Host "Writing commands to user script"
 
 function AppendToUserScript {
     Param(
@@ -231,52 +292,6 @@ function AppendToUserScript {
     Add-Content -Path "$($CustomizationScriptsDir)\$($RunAsUserScript)" -Value $Content
 }
 
-# install git if it's not already installed
-$installed_winget = $false
-if (!(Get-Command git -ErrorAction SilentlyContinue)) {
-    # if winget is available, use it to install git
-    if (Get-Command winget -ErrorAction SilentlyContinue) {
-        Write-Host "Installing git with winget"
-        winget install --id Git.Git -e --source winget
-        Write-Host "'winget install --id Git.Git -e --source winget' exited with code: $($LASTEXITCODE)"
-    }
-    # if choco is available, use it to install git
-    elseif (Get-Command choco -ErrorAction SilentlyContinue) {
-        Write-Host "Installing git with choco"
-        choco install git -y
-        Write-Host "'choco install git -y' exited with code: $($LASTEXITCODE)"
-    }
-    else {
-        # if neither winget nor choco are available, install winget and use that to install git
-        InstallPS7
-        InstallWinGet
-        $installed_winget = $true
-        Write-Host "Installing git with Install-WinGetPackage"
-        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe -MTA -Command `"Install-WinGetPackage -Id Git.Git`""}
-        if ($processCreation.ReturnValue -ne 0) {
-            Write-Host "Failed to create process to install git with Install-WinGetPackage, error code $($processCreation.ReturnValue)"
-            exit $processCreation.ReturnValue
-        }
-        Write-Host "Waiting for Install-WinGetPackage (pid: $($processCreation.ProcessId)) to complete"
-        $process = Get-Process -Id $processCreation.ProcessId
-        $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
-        $process.WaitForExit()
-        Write-Host "'Install-WinGetPackage -Id Git.Git' exited with code: $($process.ExitCode)"
-        if ($process.ExitCode -ne 0) {
-            Write-Host "Failed to install git with Install-WinGetPackage, error code $($process.ExitCode)"
-            exit $process.ExitCode
-        }
-    }
-}
-
-# install powershell 7
-InstallPS7
-
-if (!(Test-Path -PathType Leaf "$($CustomizationScriptsDir)\$($LockFile)")) {
-    SetupScheduledTasks
-}
-
-Write-Host "Writing commands to user script"
 # Write intent to output stream
 AppendToUserScript "Write-Host 'Cloning repository: $($RepositoryUrl) to directory: $($Directory)'"
 if ($Branch) {
@@ -292,21 +307,26 @@ if ($installed_winget) {
     AppendToUserScript "  Repair-WinGetPackageManager -Latest"
 }
 
-# make directory if it doesn't exist
-AppendToUserScript "  if (!(Test-Path -PathType Container '$($Directory)')) {"
-AppendToUserScript "      New-Item -Path '$($Directory)' -ItemType Directory"
-AppendToUserScript "  }"
+if (!$repoCloned)
+{
+    # make directory if it doesn't exist
+    AppendToUserScript "  if (!(Test-Path -PathType Container '$($Directory)')) {"
+    AppendToUserScript "      New-Item -Path '$($Directory)' -ItemType Directory"
+    AppendToUserScript "  }"
 
-# Work from specified directory, clone the repo and change branch if needed
-AppendToUserScript "  Push-Location $($Directory)"
-AppendToUserScript "  git clone $($RepositoryUrl)"
-if ($Branch) {
-    AppendToUserScript "  git checkout $($Branch)"
+    # Work from specified directory, clone the repo and change branch if needed
+    AppendToUserScript "  Push-Location $($Directory)"
+    AppendToUserScript "  git clone $($RepositoryUrl)"
+    if ($Branch) {
+        AppendToUserScript "  git checkout $($Branch)"
+    }
+    AppendToUserScript "  Pop-Location"
 }
-AppendToUserScript "  Pop-Location"
 AppendToUserScript "  Pop-Location"
 
 # Send output streams to log file
 AppendToUserScript "} *>> `$env:TEMP\git-cloning.log"
 
 Write-Host "Done writing commands to user script"
+
+exit 0 #Success!
