@@ -92,6 +92,8 @@ function InstallWinGet {
         Install-Module Microsoft.WinGet.Client -Scope AllUsers
 
         pwsh.exe -MTA -Command "Install-Module Microsoft.WinGet.Configuration -AllowPrerelease -Scope AllUsers"
+        pwsh.exe -MTA -Command "Install-Module winget -Scope AllUsers"
+
         Write-Host "Done Installing WinGet"
         return $true
     }
