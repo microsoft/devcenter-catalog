@@ -1,0 +1,41 @@
+name: populate-vs-solution-cache
+description: Populate the Visual Studio solution cache. The resulting caches can improve the performance of various Visual Studio features in a first-run scenario.
+command: ./main.ps1 -solutionFilePath {{ solutionFilePath }} -build {{ build }} -notLocalCache {{ notLocalCache }} -solnConfigName {{ solnConfigName }} -projectName {{ projectName }} -projConfigName {{ projConfigName }} -vsWherePath {{ vsWherePath }}
+
+inputs:
+  solutionFilePath:
+    type: string
+    required: true
+    description: The path to the .sln file for which caches should be generated.
+  build:
+    type: boolean
+    required: false
+    default: false
+    description: Indicates whether to run build as part of the populateSolutionCache process. This is useful as it allows the fast up to date check cache to be generated, which can improve F5 performance. The drawback is that running the build causes populateSolutionCache to take longer to complete.
+  notLocalCache:
+    type: boolean
+    required: false
+    default: false
+    description: Indicates that the generated caches should be generalized such that they can be moved between machine (as opposed to being used on the same machine on which the populateSolutionCache command was run).
+  solnConfigName:
+    type: string
+    required: false
+    default: ''
+    description: The name of the solution configuration (such as Debug or Release) to be used to build the solution. If multiple solution platforms are available, you must also specify the platform (for example, Debug|Win32). If this argument is unspecified or an empty string (""), the tool uses the solution's active configuration.
+  projectName:
+    type: string
+    required: false
+    default: ''
+    description: The path and name of a project file within the solution. You can enter a relative path from the solution file's folder to the project file, or the project's display name, or the full path and name of the project file.
+  projConfigName:
+    type: string
+    required: false
+    default: ''
+    description: The name of a project build configuration (such as Debug or Release) to be used when building the named project. If more than one solution platform is available, you must also specify the platform (for example, Debug|Win32). If this switch is specified, it overrides the SolnConfigName argument.
+  vsWherePath:
+    type: string
+    required: false
+    default: ''
+    description: If the Visual Studio Installer is located in a non-default location you can use this VSWherePath to specify the full path to the vswhere.exe utility.
+
+
