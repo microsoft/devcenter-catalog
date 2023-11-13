@@ -123,7 +123,11 @@ function AppendToUserScript {
 }
 
 if ($installed_winget) {
-    AppendToUserScript "Repair-WinGetPackageManager -Latest"
+    AppendToUserScript "try {"
+    AppendToUserScript "    Repair-WinGetPackageManager -Latest"
+    AppendToUserScript "} catch {"
+    AppendToUserScript '    Write-Error $_'
+    AppendToUserScript "}"
 }
 
 if ($Package) {
