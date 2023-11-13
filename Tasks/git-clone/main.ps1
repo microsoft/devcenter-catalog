@@ -142,16 +142,29 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
     if (Get-Command winget -ErrorAction SilentlyContinue) {
         Write-Host "Installing git with winget"
         winget install --id Git.Git -e --source winget
-        Write-Host "'winget install --id Git.Git -e --source winget' exited with code: $($LASTEXITCODE)"
+        $installExitCode = $LASTEXITCODE
+        Write-Host "'winget install --id Git.Git -e --source winget' exited with code: $($installExitCode)"
+        if ($installExitCode -eq 0) {
+            # add git to path
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") + ";C:\Program Files\Git\cmd"
+        }
     }
+
     # if choco is available, use it to install git
-    elseif (Get-Command choco -ErrorAction SilentlyContinue) {
+    if (!(Get-Command git -ErrorAction SilentlyContinue) -and (Get-Command choco -ErrorAction SilentlyContinue)) {
         Write-Host "Installing git with choco"
         choco install git -y
-        Write-Host "'choco install git -y' exited with code: $($LASTEXITCODE)"
+        $installExitCode = $LASTEXITCODE
+        Write-Host "'choco install git -y' exited with code: $($installExitCode)"
+        if ($installExitCode -eq 0) {
+            # add git to path
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") + ";C:\Program Files\Git\cmd"
+        }
     }
-    else {
-        # if neither winget nor choco are available, install winget and use that to install git
+
+    # If we reached here without being able to install git, try with Install-WinGetPackage
+    if (!(Get-Command git -ErrorAction SilentlyContinue)) {
+        # install winget and use that to install git
         InstallPS7
         $installed_winget = InstallWinGet
         Write-Host "Installing git with Install-WinGetPackage"
@@ -164,11 +177,15 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
         $process = Get-Process -Id $processCreation.ProcessId
         $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
         $process.WaitForExit()
-        Write-Host "'Install-WinGetPackage -Id Git.Git' exited with code: $($process.ExitCode)"
-        if ($process.ExitCode -ne 0) {
-            Write-Host "Failed to install git with Install-WinGetPackage, error code $($process.ExitCode)"
-            exit $process.ExitCode
+        $installExitCode = $process.ExitCode
+        Write-Host "'Install-WinGetPackage -Id Git.Git' exited with code: $($installExitCode)"
+        if ($installExitCode -ne 0) {
+            Write-Error "Failed to install git with Install-WinGetPackage, error code $($installExitCode)"
+            # this was the last try, so exit with the install exit code
+            exit $installExitCode
         }
+        # add git to path
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") + ";C:\Program Files\Git\cmd"
     }
 }
 
