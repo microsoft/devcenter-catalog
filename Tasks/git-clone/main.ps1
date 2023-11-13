@@ -321,7 +321,11 @@ AppendToUserScript "&{"
 # Work from C:\
 AppendToUserScript "  Push-Location C:\"
 if ($installed_winget) {
-    AppendToUserScript "  Repair-WinGetPackageManager -Latest"
+    AppendToUserScript "  try{"
+    AppendToUserScript "      Repair-WinGetPackageManager -Latest"
+    AppendToUserScript "  } catch {"
+    AppendToUserScript '      Write-Error $_'
+    AppendToUserScript "  }"
 }
 
 if (!$repoCloned)
