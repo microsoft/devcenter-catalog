@@ -206,10 +206,10 @@ if ($Pat) {
         try {
             $b64pat = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("user:$Pat"))
             if ($Branch) {
-                git -c http.extraHeader="Authorization: Basic $b64pat" clone -b $Branch $RepositoryUrl
+                git -c http.extraHeader="Authorization: Basic $b64pat" clone -b $Branch $RepositoryUrl 3>&1 2>&1
             }
             else {
-                git -c http.extraHeader="Authorization: Basic $b64pat" clone $RepositoryUrl
+                git -c http.extraHeader="Authorization: Basic $b64pat" clone $RepositoryUrl 3>&1 2>&1
             }
             if ($LASTEXITCODE -ne 0) {
                 throw "git clone exited with code: $($LASTEXITCODE)"
@@ -254,10 +254,10 @@ if ($RepositoryUrl -match "github.com") {
         Push-Location $Directory
         try {
             if ($Branch) {
-                git clone -b $Branch $RepositoryUrl
+                git clone -b $Branch $RepositoryUrl 3>&1 2>&1
             }
             else {
-                git clone $RepositoryUrl
+                git clone $RepositoryUrl 3>&1 2>&1
             }
             if ($LASTEXITCODE -ne 0) {
                 throw "git clone exited with code: $($LASTEXITCODE)"
@@ -337,9 +337,11 @@ if (!$repoCloned)
 
     # Work from specified directory, clone the repo and change branch if needed
     AppendToUserScript "  Push-Location $($Directory)"
-    AppendToUserScript "  git clone $($RepositoryUrl)"
     if ($Branch) {
-        AppendToUserScript "  git checkout $($Branch)"
+        AppendToUserScript "  git clone -b $($Branch) $($RepositoryUrl)"
+    }
+    else {
+        AppendToUserScript "  git clone $($RepositoryUrl)"
     }
     AppendToUserScript "  Pop-Location"
 }
