@@ -16,7 +16,7 @@ parameters:
       - "python"
       - "nodejs"
   - id: repoUrl
-    name: repoUrl
+    name: Repository URL
     type: string
     description: Path the the application source code
     allowed:

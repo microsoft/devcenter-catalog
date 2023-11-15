@@ -17,7 +17,7 @@ parameters:
       - "nodejs"
       - "java"
   - id: repoUrl
-    name: repoUrl
+    name: Repository URL
     type: string
     description: Path the the application source code
     allowed:
