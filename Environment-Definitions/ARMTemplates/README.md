@@ -5,11 +5,11 @@ This template folder contains a suite of templates deployed through Azure Resour
 ### What will be deployed?
 
 You can deploy the following test templates to ADE:
-- [Sandbox](./Sandbox/azuredeploy.json) Will deploy an empty environment, which implies generating a resource group for your environment, but with no resources.
-- [WebApp](./WebApp/azuredeploy.json) Will deploy an environment to host a Web App.
-- [AppServiceWithCosmos - AZD](./App-Service-with-Cosmos_AZD-template/azuredeploy.json) Will deploy an environment to host a Web App with a connected CosmosDB database, and is a definition compatible with AZD + ADE Public Preview
-- [ContainerAppWithCosmos - AZD](./Container-App-with-Cosmos_AZD-template/azuredeploy.json) Will deploy an environment to host an Azure Container App with a connected CosmosDB database, and is a definition compatible with AZD + ADE Public Preview
-- [FunctionAppWithCosmos - AZD](./Function-App-with-Cosmos_AZD-template/azuredeploy.json) Will deploy an environment to host an Azure Function App with a connected CosmosDB database, and is a definition compatible with AZD + ADE Public Preview 
+- [Sandbox](./Sandbox/README.md) Will deploy an empty environment, which implies generating a resource group for your environment, but with no resources.
+- [WebApp](./WebApp/README.md) Will deploy an environment to host a Web App.
+- [AppServiceWithCosmos - AZD](./App-Service-with-Cosmos_AZD-template/README.md) Will deploy an environment to host a Web App with a connected CosmosDB database, and is a definition compatible with AZD + ADE Public Preview
+- [ContainerAppWithCosmos - AZD](./Container-App-with-Cosmos_AZD-template/README.md) Will deploy an environment to host an Azure Container App with a connected CosmosDB database, and is a definition compatible with AZD + ADE Public Preview
+- [FunctionAppWithCosmos - AZD](./Function-App-with-Cosmos_AZD-template/README.md) Will deploy an environment to host an Azure Function App with a connected CosmosDB database, and is a definition compatible with AZD + ADE Public Preview 
 
 ### Learn more about ARM
 
