@@ -24,7 +24,7 @@ if ($WorkingDirectory -and $WorkingDirectory -ne "") {
 # Note that this will run powershell.exe
 # even if the system has pwsh.exe.
 Write-Output "Running command $Command"
-powershell.exe -Command {$Command}
+powershell.exe -Command $Command
 $CommandExitCode = $LASTEXITCODE
 Write-Output "Command exited with code $CommandExitCode"
 
