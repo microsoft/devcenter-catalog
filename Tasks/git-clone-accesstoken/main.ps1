@@ -46,10 +46,12 @@ elseif ($RepositoryUrl -match $Pattern2)
 {
     Write-Output "Match Pattern2"
 }
-elseif ($RepositoryUrl -match $Pattern3) {
+elseif ($RepositoryUrl -match $Pattern3)
+{
     Write-Output "Match Pattern3"
 }
-elseif ($RepositoryUrl -match $Pattern4) {
+elseif ($RepositoryUrl -match $Pattern4)
+{
     Write-Output "Match Pattern4"
 }
 else
