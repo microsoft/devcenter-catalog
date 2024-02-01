@@ -25,10 +25,10 @@ catch {
 # ===== Reform repository clone link
 
 # Sample repo clone link
-# https://dev.azure.com/devdiv/OnlineServices/_git/vssaas-intellicode
-# https://devdiv@dev.azure.com/devdiv/OnlineServices/_git/OnlineServices.wiki
-# https://microsoft.visualstudio.com/CMD/_git/CMD-Svc-FirstPartyApi
-# https://microsoft.visualstudio.com/DefaultCollection/CMD/_git/CMD-Svc-FirstPartyApi
+# https://organization@dev.azure.com/organization/project-name/_git/sample-repo.name
+# https://dev.azure.com/organization/project-name/_git/Sample-repo.name
+# https://organization.visualstudio.com/project-name/_git/sample-repo.name
+# https://organization.visualstudio.com/DefaultCollection/project-name/_git/sample-repo.name
 
 $Pattern1 = '^https://(?<org>[a-zA-Z]+)@dev.azure.com/(?<org_dup>[a-zA-Z]+)/(?<project>[\.\-a-zA-Z]+)/_git/(?<reponame>[\.\-a-zA-Z]+)/?$'
 $Pattern2 = '^https://dev.azure.com/(?<org>[a-zA-Z]+)/(?<project>[\.\-a-zA-Z]+)/_git/(?<reponame>[\.\-a-zA-Z]+)/?$'
