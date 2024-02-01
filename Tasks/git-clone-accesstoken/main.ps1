@@ -9,7 +9,7 @@ param (
     [string]$Branch
 )
 
-# ====== Create repository folder is it doesnot exist.
+# ====== Create repository folder if it doesnot exist.
 
 try
 {
