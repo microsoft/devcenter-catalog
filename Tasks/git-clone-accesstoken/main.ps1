@@ -13,10 +13,9 @@ param (
 
 try {
     if (!([System.IO.Directory]::Exists($Directory))){
-        New-Item -Path $Directory -ItemType "directory";
+        New-Item -Path $Directory -ItemType "directory"
+        Write-Output "Creating dir ${Directory} done."
     }
-
-    Write-Output "Creating dir ${Directory} done."
 }
 catch {
     Write-Error "ExceptionInfo for touching dir ${Directory}: $_"
@@ -77,6 +76,6 @@ else
 
 Pop-Location
 
-Write-Output "Has completed cloing repostiry."
+Write-Output "The repository has been successfully cloned."
 
 Exit 0
