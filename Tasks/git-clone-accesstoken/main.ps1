@@ -72,7 +72,7 @@ if ($Branch)
 }
 else 
 {
-    git clone -b $Link
+    git clone $Link
 }
 
 Pop-Location
