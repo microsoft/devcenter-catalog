@@ -13,7 +13,8 @@ param (
 
 try
 {
-    if (!([System.IO.Directory]::Exists($Directory))){
+    if (!([System.IO.Directory]::Exists($Directory)))
+    {
         New-Item -Path $Directory -ItemType "directory"
         Write-Output "Creating dir ${Directory} done."
     }
