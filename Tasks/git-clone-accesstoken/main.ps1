@@ -36,7 +36,9 @@ catch
 $Pattern1 = '^https://(?<org>[a-zA-Z]+)@dev.azure.com/(?<org_dup>[a-zA-Z]+)/(?<project>[\.\-a-zA-Z]+)/_git/(?<reponame>[\.\-a-zA-Z]+)/?$'
 $Pattern2 = '^https://dev.azure.com/(?<org>[a-zA-Z]+)/(?<project>[\.\-a-zA-Z]+)/_git/(?<reponame>[\.\-a-zA-Z]+)/?$'
 $Pattern3 = '^https://(?<org>[a-zA-Z]+).visualstudio.com/(?<project>[\.\-a-zA-Z]+)/_git/(?<reponame>[\.\-a-zA-Z]+)/?$'
-$Pattern4 = '^https://(?<org>[a-zA-Z]+).visualstudio.com/[Dd]efaultCollection/(?<project>[\.\-a-zA-Z]+)/_git/(?<reponame>[\.\-a-zA-Z]+)/?$'
+$Pattern4 = '^https://(?<org>[a-zA-Z]+).visualstudio.com/[Dd]efault[Cc]ollection/(?<project>[\.\-a-zA-Z]+)/_git/(?<reponame>[\.\-a-zA-Z]+)/?$'
+
+$RepositoryUrl = $RepositoryUrl.ToLower()
 
 if ($RepositoryUrl -match $Pattern1)
 {
