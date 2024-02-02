@@ -1,7 +1,7 @@
 # This is a git repository cloning task for Dev Box
 
 $schema: 1.0
-name: reserved-git-clone-accesstoken
+name: reserved-git-clone-ado-accesstoken
 description: Clone an Azure Dev Ops repository with access token.
 author: Microsoft Corporation
 command: ./main.ps1 -RepositoryUrl {{ repositoryUrl }} -Directory {{ directory }} -Branch {{ branch }} -At {{ at }}
@@ -34,13 +34,13 @@ documentation:
     This task allows you to clone a repository with access token.
     So far this task ONLY support Azure Dev Ops repository.
   examples:
-    - name: reserved-git-clone-accesstoken
+    - name: reserved-git-clone-ado-accesstoken
       description: Clone this repository into C:\Workspaces
       parameters:
         repositoryUrl: https://organization@dev.azure.com/organization/project-name/_git/sample-repo.name
         at: theaccesstoken
         directory: C:\Workspaces
-    - name: reserved-git-clone-accesstoken
+    - name: reserved-git-clone-ado-accesstoken
       description: Clone this repository's feature/winui2.6 branch into C:\Workspaces
       parameters:
         repositoryUrl: https://organization.visualstudio.com/DefaultCollection/project-name/_git/sample-repo.name
