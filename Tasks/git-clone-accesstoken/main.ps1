@@ -9,6 +9,14 @@ param (
     [string]$Branch
 )
 
+# ====== Param check
+
+if ([System.String]::IsNullOrWhiteSpace($At))
+{
+    Write-Error "Empty access token received. Exit 1."
+    Exit 1
+}
+
 # ====== Create repository folder if it doesnot exist.
 
 try
@@ -25,7 +33,7 @@ catch
     Exit 1
 }
 
-# ===== Reform repository clone link
+# ===== Reform repository clone link.
 
 # Sample repo clone link
 # https://organization@dev.azure.com/organization/project-name/_git/sample-repo.name
