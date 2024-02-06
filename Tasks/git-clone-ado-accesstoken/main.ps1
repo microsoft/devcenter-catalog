@@ -41,10 +41,10 @@ catch
 # https://organization.visualstudio.com/project-name/_git/sample-repo.name
 # https://organization.visualstudio.com/DefaultCollection/project-name/_git/sample-repo.name
 
-$Pattern1 = '^https://(?<org>[a-zA-Z]+)@dev.azure.com/(?<org_dup>[a-zA-Z]+)/(?<project>[\.\-a-zA-Z]+)/_git/(?<reponame>[\.\-a-zA-Z]+)/?$'
-$Pattern2 = '^https://dev.azure.com/(?<org>[a-zA-Z]+)/(?<project>[\.\-a-zA-Z]+)/_git/(?<reponame>[\.\-a-zA-Z]+)/?$'
-$Pattern3 = '^https://(?<org>[a-zA-Z]+).visualstudio.com/(?<project>[\.\-a-zA-Z]+)/_git/(?<reponame>[\.\-a-zA-Z]+)/?$'
-$Pattern4 = '^https://(?<org>[a-zA-Z]+).visualstudio.com/[Dd]efault[Cc]ollection/(?<project>[\.\-a-zA-Z]+)/_git/(?<reponame>[\.\-a-zA-Z]+)/?$'
+$Pattern1 = '^https://(?<org>[a-zA-Z0-9]+)@dev.azure.com/(?<org_dup>[a-zA-Z0-9]+)/(?<project>[\.\-a-zA-Z0-9]+)/_git/(?<reponame>[\.\-a-zA-Z0-9]+)/?$'
+$Pattern2 = '^https://dev.azure.com/(?<org>[a-zA-Z0-9]+)/(?<project>[\.\-a-zA-Z0-9]+)/_git/(?<reponame>[\.\-a-zA-Z0-9]+)/?$'
+$Pattern3 = '^https://(?<org>[a-zA-Z0-9]+).visualstudio.com/(?<project>[\.\-a-zA-Z0-9]+)/_git/(?<reponame>[\.\-a-zA-Z0-9]+)/?$'
+$Pattern4 = '^https://(?<org>[a-zA-Z0-9]+).visualstudio.com/[Dd]efault[Cc]ollection/(?<project>[\.\-a-zA-Z0-9]+)/_git/(?<reponame>[\.\-a-zA-Z0-9]+)/?$'
 
 $RepositoryUrl = $RepositoryUrl.ToLower()
 
