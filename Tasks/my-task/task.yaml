@@ -1,0 +1,17 @@
+$schema: 1.0
+name: my-task
+command: './myscript.ps1 -parameterOne {{parameterOne}}'
+parameters:
+  parameterOne:
+    default: ''
+    type: 'string'
+    required: false
+    description: | 
+      A parameter to myscript.
+documentation:
+  notes: This task runs myscript.
+  examples:
+    - name: winget
+      description: Install a package via winget
+      parameters:
+        package: git
