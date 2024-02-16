@@ -234,7 +234,7 @@ if ($Pat) {
         }
 
         # If the repo wasn't cloned successfully, it may be that the PAT is actually an access token, which requires
-        # a different authentication header. We'll try to clone the repository using the provided PAT as an access token.
+        # a different approach. We'll try to clone the repository using the provided PAT as an access token.
         if (!$repoCloned) {
             Push-Location $Directory
             try {
