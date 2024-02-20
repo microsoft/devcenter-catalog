@@ -202,6 +202,8 @@ if ($Pat) {
         if (!(Test-Path -PathType Container $Directory)) {
             New-Item -Path $Directory -ItemType Directory
         }
+
+        # First we'll try to clone the repository using the provided PAT.
         Push-Location $Directory
         try {
             $b64pat = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("user:$Pat"))
@@ -211,6 +213,7 @@ if ($Pat) {
             else {
                 git -c http.extraHeader="Authorization: Basic $b64pat" clone $RepositoryUrl 3>&1 2>&1
             }
+
             if ($LASTEXITCODE -ne 0) {
                 throw "git clone exited with code: $($LASTEXITCODE)"
             }
@@ -224,10 +227,79 @@ if ($Pat) {
         }
         catch {
             Write-Error $_
-            Write-Host "Failed to clone repository: $($RepositoryUrl) to directory: $($Directory), cloning attempt will be queued for user login"
+            Write-Host "Failed to clone repository: $($RepositoryUrl) to directory: $($Directory), we'll try again assuming it's an access token."
         }
         finally {
             Pop-Location
+        }
+
+        # If the repo wasn't cloned successfully, it may be that the PAT is actually an access token, which requires
+        # a different approach. We'll try to clone the repository using the provided PAT as an access token.
+        if (!$repoCloned) {
+            Push-Location $Directory
+            try {
+
+                # ===== Normalize the repository clone link
+
+                # Sample repo clone links:
+                # https://organization@dev.azure.com/organization/project-name/_git/sample-repo.name
+                # https://dev.azure.com/organization/project-name/_git/Sample-repo.name
+                # https://organization.visualstudio.com/project-name/_git/sample-repo.name
+                # https://organization.visualstudio.com/DefaultCollection/project-name/_git/sample-repo.name
+
+                $Pattern1 = '^https://(?<org>[a-zA-Z0-9]+)@dev.azure.com/(?<org_dup>[a-zA-Z0-9]+)/(?<project>[\.\-a-zA-Z0-9]+)/_git/(?<reponame>[\.\-a-zA-Z0-9]+)/?$'
+                $Pattern2 = '^https://dev.azure.com/(?<org>[a-zA-Z0-9]+)/(?<project>[\.\-a-zA-Z0-9]+)/_git/(?<reponame>[\.\-a-zA-Z0-9]+)/?$'
+                $Pattern3 = '^https://(?<org>[a-zA-Z0-9]+).visualstudio.com/(?<project>[\.\-a-zA-Z0-9]+)/_git/(?<reponame>[\.\-a-zA-Z0-9]+)/?$'
+                $Pattern4 = '^https://(?<org>[a-zA-Z0-9]+).visualstudio.com/[Dd]efault[Cc]ollection/(?<project>[\.\-a-zA-Z0-9]+)/_git/(?<reponame>[\.\-a-zA-Z0-9]+)/?$'
+
+                $RepositoryUrl = $RepositoryUrl.ToLower()
+                if ($RepositoryUrl -match $Pattern1) {
+                    Write-Output "Match Pattern1"
+                }
+                elseif ($RepositoryUrl -match $Pattern2) {
+                    Write-Output "Match Pattern2"
+                }
+                elseif ($RepositoryUrl -match $Pattern3) {
+                    Write-Output "Match Pattern3"
+                }
+                elseif ($RepositoryUrl -match $Pattern4) {
+                    Write-Output "Match Pattern4"
+                }
+                else {
+                    throw "RepositoryUrl doesnot match any known pattern"
+                }
+
+                $NormalizedRepositoryUrl = 'https://{org}:{at}@dev.azure.com/{org}/{project}/_git/{reponame}'
+                $NormalizedRepositoryUrl = $NormalizedRepositoryUrl.Replace('{org}', $Matches.org)
+                $NormalizedRepositoryUrl = $NormalizedRepositoryUrl.Replace('{project}', $Matches.project)
+                $NormalizedRepositoryUrl = $NormalizedRepositoryUrl.Replace('{reponame}', $Matches.reponame)
+                $NormalizedRepositoryUrl = $NormalizedRepositoryUrl.Replace('{at}', $Pat)
+
+                if ($Branch) {
+                    git clone -b $Branch $NormalizedRepositoryUrl 3>&1 2>&1
+                }
+                else {
+                    git clone $NormalizedRepositoryUrl 3>&1 2>&1
+                }
+
+                if ($LASTEXITCODE -ne 0) {
+                    throw "git clone exited with code: $($LASTEXITCODE)"
+                }
+                # If the code reaches this point, we've successfully cloned the repository.
+                Write-Host "Successfully cloned repository: $($RepositoryUrl) to directory: $($Directory)"
+                $repoCloned = $true
+                if (!$installed_winget)
+                {
+                    exit 0 #Success!
+                }
+            }
+            catch {
+                Write-Error $_
+                Write-Host "Failed to clone repository: $($RepositoryUrl) to directory: $($Directory), cloning attempt will be queued for user login"
+            }
+            finally {
+                Pop-Location
+            }
         }
     }
     catch {
@@ -240,7 +312,7 @@ if ($Pat) {
 }
 
 # Check if the repository is hosted in GitHub
-if ($RepositoryUrl -match "github.com") {
+if (!$repoCloned -and ($RepositoryUrl -match "github.com")) {
     # attempt to clone without credentials
     Write-Host "Attempting to clone repository: $($RepositoryUrl) to directory: $($Directory) without credentials"
     if ($Branch) {
@@ -310,6 +382,7 @@ function AppendToUserScript {
 }
 
 # Write intent to output stream
+AppendToUserScript ""
 AppendToUserScript "Write-Host 'Cloning repository: $($RepositoryUrl) to directory: $($Directory)'"
 if ($Branch) {
     AppendToUserScript "Write-Host 'Using branch: $($Branch)'"
