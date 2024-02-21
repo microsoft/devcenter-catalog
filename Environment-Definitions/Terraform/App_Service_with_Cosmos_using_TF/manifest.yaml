@@ -1,0 +1,31 @@
+name: App-Service-with-Cosmos-using-TF
+summary: Creates App Service with Cosmos using TF
+description: Deploys App Service with Cosmos environment using Terraform, it is compatible with azd.
+runner: Terraform
+templatePath: main.tf
+parameters:
+  - id: "environment_name"
+    name: "Environment Name"
+    required: true
+    type: "string"
+  - id: "location"
+    name: "Location"
+    required: true
+    type: "string"
+  - id: "principal_id"
+    name: "Principal Id"
+    required: true
+    type: "string"
+  - id: "env_principal_id"
+    name: "Env Principal Id"
+    required: true
+    type: "string"
+  - id: "repoUrl"
+    name: "Repository URL"
+    required: true
+    type: "string"
+    description: Path the the application source code
+    allowed:
+      - "https://github.com/azure-samples/todo-nodejs-mongo-terraform"
+      - "https://github.com/azure-samples/todo-python-mongo-terraform"
+  
