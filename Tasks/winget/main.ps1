@@ -65,44 +65,6 @@ function SetupScheduledTasks {
     Write-Host "Done setting up scheduled tasks"
 }
 
-function InstallPS7 {
-    if (!(Get-Command pwsh -ErrorAction SilentlyContinue)) {
-        Write-Host "Installing PowerShell 7"
-        $code = Invoke-RestMethod -Uri https://aka.ms/install-powershell.ps1
-        $null = New-Item -Path function:Install-PowerShell -Value $code
-        WithRetry -ScriptBlock {
-            Install-PowerShell -UseMSI -Quiet
-        } -Maximum 5 -Delay 100
-        # Need to update the path post install
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-        Write-Host "Done Installing PowerShell 7"
-    }
-    else {
-        Write-Host "PowerShell 7 is already installed"
-    }
-}
-
-function InstallWinGet {
-    # check if the Microsoft.Winget.Configuration module is installed
-    if (!(Get-Module -ListAvailable -Name Microsoft.Winget.Client)) {
-        Write-Host "Installing WinGet"
-        Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope AllUsers
-        Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
-
-        Install-Module Microsoft.WinGet.Client -Scope AllUsers
-
-        pwsh.exe -MTA -Command "Install-Module Microsoft.WinGet.Configuration -AllowPrerelease -Scope AllUsers"
-        pwsh.exe -MTA -Command "Install-Module winget -Scope AllUsers"
-
-        Write-Host "Done Installing WinGet"
-        return $true
-    }
-    else {
-        Write-Host "WinGet is already installed"
-        return $false
-    }
-}
-
 function WithRetry {
     Param(
         [Parameter(Position=0, Mandatory=$true)]
@@ -136,15 +98,61 @@ function WithRetry {
     throw $lastException
 }
 
-InstallPS7
-$installed_winget = InstallWinGet
-
-# TODO only need to setup scheduled tasks if running as user
-if (!(Test-Path -PathType Leaf "$($CustomizationScriptsDir)\$($LockFile)")) {
-    SetupScheduledTasks
+function InstallPS7 {
+    if (!(Get-Command pwsh -ErrorAction SilentlyContinue)) {
+        Write-Host "Installing PowerShell 7"
+        $code = Invoke-RestMethod -Uri https://aka.ms/install-powershell.ps1
+        $null = New-Item -Path function:Install-PowerShell -Value $code
+        WithRetry -ScriptBlock {
+            Install-PowerShell -UseMSI -Quiet
+        } -Maximum 5 -Delay 100
+        # Need to update the path post install
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+        Write-Host "Done Installing PowerShell 7"
+    }
+    else {
+        Write-Host "PowerShell 7 is already installed"
+    }
 }
 
-Write-Host "Writing commands to user script"
+function InstallWinGet {
+    actionTaken = $false
+    # check if the Microsoft.Winget.Client module is installed
+    if (!(Get-Module -ListAvailable -Name Microsoft.Winget.Client)) {
+        Write-Host "Installing Microsoft.Winget.Client"
+        Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope AllUsers
+        Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
+
+        Install-Module Microsoft.WinGet.Client -Scope AllUsers
+
+        Write-Host "Done Installing Microsoft.Winget.Client"
+        actionTaken = $true
+    }
+    else {
+        Write-Host "Microsoft.Winget.Client is already installed"
+    }
+
+    # check if the Microsoft.WinGet.Configuration module is installed
+    if (!(Get-Module -ListAvailable -Name Microsoft.WinGet.Configuration)) {
+        Write-Host "Installing Microsoft.WinGet.Configuration"
+        Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope AllUsers
+        Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
+
+        pwsh.exe -MTA -Command "Install-Module Microsoft.WinGet.Configuration -AllowPrerelease -Scope AllUsers"
+        pwsh.exe -MTA -Command "Install-Module winget -Scope AllUsers"
+        
+        Write-Host "Done Installing Microsoft.WinGet.Configuration"
+        actionTaken = $true
+    }
+    else {
+        Write-Host "Microsoft.WinGet.Configuration is already installed"
+    }
+
+    return $actionTaken
+}
+
+InstallPS7
+$installed_winget = InstallWinGet
 
 function AppendToUserScript {
     Param(
@@ -155,37 +163,98 @@ function AppendToUserScript {
     Add-Content -Path "$($CustomizationScriptsDir)\$($RunAsUserScript)" -Value $Content
 }
 
-if ($installed_winget) {
-    AppendToUserScript "try {"
-    AppendToUserScript "    Repair-WinGetPackageManager -Latest"
-    AppendToUserScript "} catch {"
-    AppendToUserScript '    Write-Error $_'
-    AppendToUserScript "}"
-}
+# We're running as user via scheduled task:
+if ($RunAsUser -eq "true") {
+    Write-Host "Running as user"
 
-if ($Package) {
-    if ($RunAsUser -eq "true") {
-        AppendToUserScript "Install-WinGetPackage -Id $($Package)"
-    } else {
-        Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe -MTA -Command `"Install-WinGetPackage -Id $($Package)`""}
+    if (!(Test-Path -PathType Leaf "$($CustomizationScriptsDir)\$($LockFile)")) {
+        SetupScheduledTasks
     }
-}
 
-if ($ConfigurationFile) {
-    if ($DownloadUrl) {
-        $ConfigurationFileDir = Split-Path -Path $ConfigurationFile
-        if(-Not (Test-Path -Path $ConfigurationFileDir))
-        {
-            New-Item -ItemType Directory -Path $ConfigurationFileDir
+    Write-Host "Writing commands to user script"
+
+    if ($installed_winget) {
+        AppendToUserScript "try {"
+        AppendToUserScript "    Repair-WinGetPackageManager -Latest"
+        AppendToUserScript "} catch {"
+        AppendToUserScript '    Write-Error $_'
+        AppendToUserScript "}"
+    }
+
+    # We're running in package mode:
+    if ($Package) {
+        Write-Host "Appending package install: $($Package)"
+        AppendToUserScript "Install-WinGetPackage -Id $($Package)"
+    }
+    # We're running in configuration file mode:
+    elseif ($ConfigurationFile) {
+        if ($DownloadUrl) {
+            Write-Host "Downloading configuration file from: $($DownloadUrl)"
+            $ConfigurationFileDir = Split-Path -Path $ConfigurationFile
+            if(-Not (Test-Path -Path $ConfigurationFileDir))
+            {
+                New-Item -ItemType Directory -Path $ConfigurationFileDir
+            }
+    
+            Invoke-WebRequest -Uri $DownloadUrl -OutFile $ConfigurationFile
         }
 
-        Invoke-WebRequest -Uri $DownloadUrl -OutFile $ConfigurationFile
-    }
+        Write-Host "Appending installation of configuration file: $($ConfigurationFile)"
 
-    if ($RunAsUser -eq "true") {
         AppendToUserScript "Get-WinGetConfiguration -File $($ConfigurationFile) | Invoke-WinGetConfiguration -AcceptConfigurationAgreements"
         AppendToUserScript '$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")'
-    } else {
-        Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe -MTA -Command `"Get-WinGetConfiguration -File $($ConfigurationFile) | Invoke-WinGetConfiguration -AcceptConfigurationAgreements`""}
+    }
+    else {
+        Write-Error "No package or configuration file specified"
+        exit 1
     }
 }
+# We're running as system in the provisioning context:
+else {
+    Write-Host "Running as system"
+
+    # We're running in package mode:
+    if ($Package) {
+        Write-Host "Running package install: $($Package)"
+        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe -MTA -Command `"Install-WinGetPackage -Id $($Package)`""}
+        $process = Get-Process -Id $processCreation.ProcessId
+        $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
+        $process.WaitForExit()
+        $installExitCode = $process.ExitCode
+        if ($installExitCode -ne 0) {
+            Write-Error "Failed to install package. Exit code: $installExitCode"
+            exit 1
+        }
+    }
+    # We're running in configuration file mode:
+    elseif ($ConfigurationFile) {
+        if ($DownloadUrl) {
+            Write-Host "Downloading configuration file from: $($DownloadUrl)"
+            $ConfigurationFileDir = Split-Path -Path $ConfigurationFile
+            if(-Not (Test-Path -Path $ConfigurationFileDir))
+            {
+                New-Item -ItemType Directory -Path $ConfigurationFileDir
+            }
+    
+            Invoke-WebRequest -Uri $DownloadUrl -OutFile $ConfigurationFile
+        }
+
+        Write-Host "Running installation of configuration file: $($ConfigurationFile)"
+
+        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe -MTA -Command `"Get-WinGetConfiguration -File $($ConfigurationFile) | Invoke-WinGetConfiguration -AcceptConfigurationAgreements`""}
+        $process = Get-Process -Id $processCreation.ProcessId
+        $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
+        $process.WaitForExit()
+        $installExitCode = $process.ExitCode
+        if ($installExitCode -ne 0) {
+            Write-Error "Failed to install packages. Exit code: $installExitCode"
+            exit 1
+        }
+    }
+    else {
+        Write-Error "No package or configuration file specified"
+        exit 1
+    }
+}
+
+exit 0
