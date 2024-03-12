@@ -4,9 +4,11 @@ param (
     [Parameter()]
     [string]$DownloadUrl,
     [Parameter()]
-    [string]$RunAsUser,
+    [string]$InlineConfigurationBase64,
     [Parameter()]
-    [string]$Package
+    [string]$Package,
+    [Parameter()]
+    [string]$RunAsUser
 )
 
 $CustomizationScriptsDir = "C:\DevBoxCustomizations"
@@ -116,7 +118,7 @@ function InstallPS7 {
 }
 
 function InstallWinGet {
-    actionTaken = $false
+    $actionTaken = $false
     # check if the Microsoft.Winget.Client module is installed
     if (!(Get-Module -ListAvailable -Name Microsoft.Winget.Client)) {
         Write-Host "Installing Microsoft.Winget.Client"
@@ -165,7 +167,7 @@ function AppendToUserScript {
 
 # We're running as user via scheduled task:
 if ($RunAsUser -eq "true") {
-    Write-Host "Running as user"
+    Write-Host "Running as user via scheduled task"
 
     if (!(Test-Path -PathType Leaf "$($CustomizationScriptsDir)\$($LockFile)")) {
         SetupScheduledTasks
@@ -204,14 +206,30 @@ if ($RunAsUser -eq "true") {
         AppendToUserScript "Get-WinGetConfiguration -File $($ConfigurationFile) | Invoke-WinGetConfiguration -AcceptConfigurationAgreements"
         AppendToUserScript '$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")'
     }
+    elseif ($InlineConfigurationBase64) {
+        Write-Host "Appending installation of inline configuration"
+
+        $InlineConfiguration = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($InlineConfigurationBase64))
+
+        # if $ConfigurationFile is not specified, we need to write the configuration to a temporary file
+        if (-not $ConfigurationFile) {
+            $tempConfigFile = [System.IO.Path]::GetTempFileName() + ".yaml"
+            $ConfigurationFile = $tempConfigFile
+        }
+        $InlineConfiguration | Out-File -FilePath $ConfigurationFile -Encoding utf8
+
+        AppendToUserScript "Get-WinGetConfiguration -File $($ConfigurationFile) | Invoke-WinGetConfiguration -AcceptConfigurationAgreements"
+        AppendToUserScript "Remove-Item -Path $($ConfigurationFile) -Force"
+        AppendToUserScript '$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")'
+    }
     else {
         Write-Error "No package or configuration file specified"
         exit 1
     }
 }
-# We're running as system in the provisioning context:
+# We're running in the provisioning context:
 else {
-    Write-Host "Running as system"
+    Write-Host "Running in the provisioning context"
 
     # We're running in package mode:
     if ($Package) {
@@ -248,6 +266,32 @@ else {
         $installExitCode = $process.ExitCode
         if ($installExitCode -ne 0) {
             Write-Error "Failed to install packages. Exit code: $installExitCode"
+            exit 1
+        }
+    }
+    elseif ($InlineConfigurationBase64) {
+        Write-Host "Running installation of inline configuration"
+
+        $InlineConfiguration = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($InlineConfigurationBase64))
+
+        # if $ConfigurationFile is not specified, we need to write the configuration to a temporary file
+        if (-not $ConfigurationFile) {
+            $tempConfigFile = [System.IO.Path]::GetTempFileName() + ".yaml"
+            $ConfigurationFile = $tempConfigFile
+        }
+        $InlineConfiguration | Out-File -FilePath $ConfigurationFile -Encoding utf8
+
+        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe -MTA -Command `"Get-WinGetConfiguration -File $($ConfigurationFile) | Invoke-WinGetConfiguration -AcceptConfigurationAgreements`""}
+        $process = Get-Process -Id $processCreation.ProcessId
+        $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
+        $process.WaitForExit()
+        $installExitCode = $process.ExitCode
+        
+        # delete the temporary file
+        Remove-Item -Path $tempConfigFile -Force
+
+        if ($installExitCode -ne 0) {
+            Write-Error "Failed to install inline packages. Exit code: $installExitCode"
             exit 1
         }
     }
