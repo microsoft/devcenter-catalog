@@ -165,6 +165,39 @@ function AppendToUserScript {
     Add-Content -Path "$($CustomizationScriptsDir)\$($RunAsUserScript)" -Value $Content
 }
 
+# If an inline base64 configuration is specified, we need to write the decoded version to a file
+if ($InlineConfigurationBase64) {
+    Write-Host "Decoding base64 inline configuration and writing to file"
+
+    $InlineConfiguration = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($InlineConfigurationBase64))
+
+    # if $ConfigurationFile is not specified, we need to write the configuration to a temporary file
+    if (-not $ConfigurationFile) {
+        $ConfigurationFile = [System.IO.Path]::GetTempFileName() + ".yaml"
+    }
+    $InlineConfiguration | Out-File -FilePath $ConfigurationFile -Encoding utf8
+    Write-Host "Wrote configuration to file: $($ConfigurationFile)"
+}
+# If a download URL is specified, we need to download the contents and write them to the configuration file
+elseif ($DownloadUrl) {
+    Write-Host "Downloading configuration file from: $($DownloadUrl)"
+
+    # if $ConfigurationFile is not specified, we need to write the configuration to a temporary file
+    if (-not $ConfigurationFile) {
+        $ConfigurationFile = [System.IO.Path]::GetTempFileName() + ".yaml"
+    }
+
+    # Ensure the directory exists
+    $ConfigurationFileDir = Split-Path -Path $ConfigurationFile
+    if(-Not (Test-Path -Path $ConfigurationFileDir))
+    {
+        New-Item -ItemType Directory -Path $ConfigurationFileDir
+    }
+
+    Invoke-WebRequest -Uri $DownloadUrl -OutFile $ConfigurationFile
+    Write-Host "Downloaded configuration to: $($ConfigurationFile)"
+}
+
 # We're running as user via scheduled task:
 if ($RunAsUser -eq "true") {
     Write-Host "Running as user via scheduled task"
@@ -188,36 +221,8 @@ if ($RunAsUser -eq "true") {
         Write-Host "Appending package install: $($Package)"
         AppendToUserScript "Install-WinGetPackage -Id $($Package)"
     }
-    # We're running in inline base64 configuration mode:
-    elseif ($InlineConfigurationBase64) {
-        Write-Host "Appending installation of inline configuration"
-
-        $InlineConfiguration = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($InlineConfigurationBase64))
-
-        # if $ConfigurationFile is not specified, we need to write the configuration to a temporary file
-        if (-not $ConfigurationFile) {
-            $tempConfigFile = [System.IO.Path]::GetTempFileName() + ".yaml"
-            $ConfigurationFile = $tempConfigFile
-        }
-        $InlineConfiguration | Out-File -FilePath $ConfigurationFile -Encoding utf8
-
-        AppendToUserScript "Get-WinGetConfiguration -File $($ConfigurationFile) | Invoke-WinGetConfiguration -AcceptConfigurationAgreements"
-        AppendToUserScript "Remove-Item -Path $($ConfigurationFile) -Force"
-        AppendToUserScript '$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")'
-    }
     # We're running in configuration file mode:
     elseif ($ConfigurationFile) {
-        if ($DownloadUrl) {
-            Write-Host "Downloading configuration file from: $($DownloadUrl)"
-            $ConfigurationFileDir = Split-Path -Path $ConfigurationFile
-            if(-Not (Test-Path -Path $ConfigurationFileDir))
-            {
-                New-Item -ItemType Directory -Path $ConfigurationFileDir
-            }
-    
-            Invoke-WebRequest -Uri $DownloadUrl -OutFile $ConfigurationFile
-        }
-
         Write-Host "Appending installation of configuration file: $($ConfigurationFile)"
 
         AppendToUserScript "Get-WinGetConfiguration -File $($ConfigurationFile) | Invoke-WinGetConfiguration -AcceptConfigurationAgreements"
@@ -245,46 +250,8 @@ else {
             exit 1
         }
     }
-    # We're running in inline base64 configuration mode:
-    elseif ($InlineConfigurationBase64) {
-        Write-Host "Running installation of inline configuration"
-
-        $InlineConfiguration = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($InlineConfigurationBase64))
-
-        # if $ConfigurationFile is not specified, we need to write the configuration to a temporary file
-        if (-not $ConfigurationFile) {
-            $tempConfigFile = [System.IO.Path]::GetTempFileName() + ".yaml"
-            $ConfigurationFile = $tempConfigFile
-        }
-        $InlineConfiguration | Out-File -FilePath $ConfigurationFile -Encoding utf8
-
-        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe -MTA -Command `"Get-WinGetConfiguration -File $($ConfigurationFile) | Invoke-WinGetConfiguration -AcceptConfigurationAgreements`""}
-        $process = Get-Process -Id $processCreation.ProcessId
-        $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
-        $process.WaitForExit()
-        $installExitCode = $process.ExitCode
-        
-        # delete the temporary file
-        Remove-Item -Path $tempConfigFile -Force
-
-        if ($installExitCode -ne 0) {
-            Write-Error "Failed to install inline packages. Exit code: $installExitCode"
-            exit 1
-        }
-    }
     # We're running in configuration file mode:
     elseif ($ConfigurationFile) {
-        if ($DownloadUrl) {
-            Write-Host "Downloading configuration file from: $($DownloadUrl)"
-            $ConfigurationFileDir = Split-Path -Path $ConfigurationFile
-            if(-Not (Test-Path -Path $ConfigurationFileDir))
-            {
-                New-Item -ItemType Directory -Path $ConfigurationFileDir
-            }
-    
-            Invoke-WebRequest -Uri $DownloadUrl -OutFile $ConfigurationFile
-        }
-
         Write-Host "Running installation of configuration file: $($ConfigurationFile)"
 
         $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe -MTA -Command `"Get-WinGetConfiguration -File $($ConfigurationFile) | Invoke-WinGetConfiguration -AcceptConfigurationAgreements`""}
