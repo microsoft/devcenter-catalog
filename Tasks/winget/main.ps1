@@ -165,7 +165,7 @@ function AppendToUserScript {
     Add-Content -Path "$($CustomizationScriptsDir)\$($RunAsUserScript)" -Value $Content
 }
 
-function EnsureConfigurationFileIsSet {
+function EnsureConfigurationFileIsSet ($ConfigurationFile) {
     # if $ConfigurationFile is not specified, we need to write the configuration to a temporary file
     if (-not $ConfigurationFile) {
         if ($RunAsUser -eq "true") {
@@ -186,13 +186,15 @@ function EnsureConfigurationFileIsSet {
     {
         New-Item -ItemType Directory -Path $ConfigurationFileDir
     }
+
+    return $ConfigurationFile
 }
 
 # If an inline base64 configuration is specified, we need to write the decoded version to the file
 if ($InlineConfigurationBase64) {
     Write-Host "Decoding base64 inline configuration and writing to file"
 
-    EnsureConfigurationFileIsSet
+    $ConfigurationFile = EnsureConfigurationFileIsSet($ConfigurationFile)
     $InlineConfiguration = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($InlineConfigurationBase64))
     $InlineConfiguration | Out-File -FilePath $ConfigurationFile -Encoding utf8
 
@@ -202,7 +204,7 @@ if ($InlineConfigurationBase64) {
 elseif ($DownloadUrl) {
     Write-Host "Downloading configuration file from: $($DownloadUrl)"
 
-    EnsureConfigurationFileIsSet
+    $ConfigurationFile = EnsureConfigurationFileIsSet($ConfigurationFile)
     Invoke-WebRequest -Uri $DownloadUrl -OutFile $ConfigurationFile
 
     Write-Host "Downloaded configuration to: $($ConfigurationFile)"
