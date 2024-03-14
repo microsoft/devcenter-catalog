@@ -128,7 +128,7 @@ function InstallWinGet {
         Install-Module Microsoft.WinGet.Client -Scope AllUsers
 
         Write-Host "Done Installing Microsoft.Winget.Client"
-        actionTaken = $true
+        $actionTaken = $true
     }
     else {
         Write-Host "Microsoft.Winget.Client is already installed"
@@ -144,7 +144,7 @@ function InstallWinGet {
         pwsh.exe -MTA -Command "Install-Module winget -Scope AllUsers"
         
         Write-Host "Done Installing Microsoft.WinGet.Configuration"
-        actionTaken = $true
+        $actionTaken = $true
     }
     else {
         Write-Host "Microsoft.WinGet.Configuration is already installed"
