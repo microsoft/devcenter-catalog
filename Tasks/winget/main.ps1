@@ -188,6 +188,23 @@ if ($RunAsUser -eq "true") {
         Write-Host "Appending package install: $($Package)"
         AppendToUserScript "Install-WinGetPackage -Id $($Package)"
     }
+    # We're running in inline base64 configuration mode:
+    elseif ($InlineConfigurationBase64) {
+        Write-Host "Appending installation of inline configuration"
+
+        $InlineConfiguration = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($InlineConfigurationBase64))
+
+        # if $ConfigurationFile is not specified, we need to write the configuration to a temporary file
+        if (-not $ConfigurationFile) {
+            $tempConfigFile = [System.IO.Path]::GetTempFileName() + ".yaml"
+            $ConfigurationFile = $tempConfigFile
+        }
+        $InlineConfiguration | Out-File -FilePath $ConfigurationFile -Encoding utf8
+
+        AppendToUserScript "Get-WinGetConfiguration -File $($ConfigurationFile) | Invoke-WinGetConfiguration -AcceptConfigurationAgreements"
+        AppendToUserScript "Remove-Item -Path $($ConfigurationFile) -Force"
+        AppendToUserScript '$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")'
+    }
     # We're running in configuration file mode:
     elseif ($ConfigurationFile) {
         if ($DownloadUrl) {
@@ -204,22 +221,6 @@ if ($RunAsUser -eq "true") {
         Write-Host "Appending installation of configuration file: $($ConfigurationFile)"
 
         AppendToUserScript "Get-WinGetConfiguration -File $($ConfigurationFile) | Invoke-WinGetConfiguration -AcceptConfigurationAgreements"
-        AppendToUserScript '$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")'
-    }
-    elseif ($InlineConfigurationBase64) {
-        Write-Host "Appending installation of inline configuration"
-
-        $InlineConfiguration = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($InlineConfigurationBase64))
-
-        # if $ConfigurationFile is not specified, we need to write the configuration to a temporary file
-        if (-not $ConfigurationFile) {
-            $tempConfigFile = [System.IO.Path]::GetTempFileName() + ".yaml"
-            $ConfigurationFile = $tempConfigFile
-        }
-        $InlineConfiguration | Out-File -FilePath $ConfigurationFile -Encoding utf8
-
-        AppendToUserScript "Get-WinGetConfiguration -File $($ConfigurationFile) | Invoke-WinGetConfiguration -AcceptConfigurationAgreements"
-        AppendToUserScript "Remove-Item -Path $($ConfigurationFile) -Force"
         AppendToUserScript '$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")'
     }
     else {
@@ -241,6 +242,33 @@ else {
         $installExitCode = $process.ExitCode
         if ($installExitCode -ne 0) {
             Write-Error "Failed to install package. Exit code: $installExitCode"
+            exit 1
+        }
+    }
+    # We're running in inline base64 configuration mode:
+    elseif ($InlineConfigurationBase64) {
+        Write-Host "Running installation of inline configuration"
+
+        $InlineConfiguration = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($InlineConfigurationBase64))
+
+        # if $ConfigurationFile is not specified, we need to write the configuration to a temporary file
+        if (-not $ConfigurationFile) {
+            $tempConfigFile = [System.IO.Path]::GetTempFileName() + ".yaml"
+            $ConfigurationFile = $tempConfigFile
+        }
+        $InlineConfiguration | Out-File -FilePath $ConfigurationFile -Encoding utf8
+
+        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe -MTA -Command `"Get-WinGetConfiguration -File $($ConfigurationFile) | Invoke-WinGetConfiguration -AcceptConfigurationAgreements`""}
+        $process = Get-Process -Id $processCreation.ProcessId
+        $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
+        $process.WaitForExit()
+        $installExitCode = $process.ExitCode
+        
+        # delete the temporary file
+        Remove-Item -Path $tempConfigFile -Force
+
+        if ($installExitCode -ne 0) {
+            Write-Error "Failed to install inline packages. Exit code: $installExitCode"
             exit 1
         }
     }
@@ -266,32 +294,6 @@ else {
         $installExitCode = $process.ExitCode
         if ($installExitCode -ne 0) {
             Write-Error "Failed to install packages. Exit code: $installExitCode"
-            exit 1
-        }
-    }
-    elseif ($InlineConfigurationBase64) {
-        Write-Host "Running installation of inline configuration"
-
-        $InlineConfiguration = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($InlineConfigurationBase64))
-
-        # if $ConfigurationFile is not specified, we need to write the configuration to a temporary file
-        if (-not $ConfigurationFile) {
-            $tempConfigFile = [System.IO.Path]::GetTempFileName() + ".yaml"
-            $ConfigurationFile = $tempConfigFile
-        }
-        $InlineConfiguration | Out-File -FilePath $ConfigurationFile -Encoding utf8
-
-        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe -MTA -Command `"Get-WinGetConfiguration -File $($ConfigurationFile) | Invoke-WinGetConfiguration -AcceptConfigurationAgreements`""}
-        $process = Get-Process -Id $processCreation.ProcessId
-        $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
-        $process.WaitForExit()
-        $installExitCode = $process.ExitCode
-        
-        # delete the temporary file
-        Remove-Item -Path $tempConfigFile -Force
-
-        if ($installExitCode -ne 0) {
-            Write-Error "Failed to install inline packages. Exit code: $installExitCode"
             exit 1
         }
     }
