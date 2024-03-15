@@ -193,7 +193,7 @@ function EnsureConfigurationFileIsSet ($ConfigurationFile) {
     $ConfigurationFileDir = Split-Path -Path $ConfigurationFile
     if(-Not (Test-Path -Path $ConfigurationFileDir))
     {
-        New-Item -ItemType Directory -Path $ConfigurationFileDir
+        $null = New-Item -ItemType Directory -Path $ConfigurationFileDir
     }
 
     return $ConfigurationFile
