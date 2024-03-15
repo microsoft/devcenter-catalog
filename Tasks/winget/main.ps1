@@ -22,8 +22,17 @@ function SetupScheduledTasks {
     Write-Host "Setting up scheduled tasks"
     if (!(Test-Path -PathType Container $CustomizationScriptsDir)) {
         New-Item -Path $CustomizationScriptsDir -ItemType Directory
+    }
+
+    if (!(Test-Path -PathType Leaf "$($CustomizationScriptsDir)\$($LockFile)")) {
         New-Item -Path "$($CustomizationScriptsDir)\$($LockFile)" -ItemType File
+    }
+
+    if (!(Test-Path -PathType Leaf "$($CustomizationScriptsDir)\$($RunAsUserScript)")) {
         Copy-Item "./$($RunAsUserScript)" -Destination $CustomizationScriptsDir
+    }
+
+    if (!(Test-Path -PathType Leaf "$($CustomizationScriptsDir)\$($CleanupScript)")) {
         Copy-Item "./$($CleanupScript)" -Destination $CustomizationScriptsDir
     }
 
