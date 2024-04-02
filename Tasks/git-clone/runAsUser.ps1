@@ -6,6 +6,8 @@ $CleanupScript = "cleanup.ps1"
 $RunAsUserTask = "DevBoxCustomizations"
 $CleanupTask = "DevBoxCustomizationsCleanup"
 
+Start-Transcript -Path $env:TEMP\git-cloning.log -Append -IncludeInvocationHeader
+
 Write-Host "Microsoft Dev Box - Customizations"
 Write-Host "----------------------------------"
 Write-Host "Setting up scheduled tasks..."

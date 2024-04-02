@@ -382,46 +382,39 @@ function AppendToUserScript {
 }
 
 # Write intent to output stream
-AppendToUserScript ""
 AppendToUserScript "Write-Host 'Cloning repository: $($RepositoryUrl) to directory: $($Directory)'"
 if ($Branch) {
     AppendToUserScript "Write-Host 'Using branch: $($Branch)'"
 }
 
-# Capture output streams
-AppendToUserScript "&{"
-
 # Work from C:\
-AppendToUserScript "  Push-Location C:\"
+AppendToUserScript "Push-Location C:\"
 if ($installed_winget) {
-    AppendToUserScript "  try{"
-    AppendToUserScript "      Repair-WinGetPackageManager -Latest"
-    AppendToUserScript "  } catch {"
-    AppendToUserScript '      Write-Error $_'
-    AppendToUserScript "  }"
+    AppendToUserScript "try{"
+    AppendToUserScript "    Repair-WinGetPackageManager -Latest"
+    AppendToUserScript "} catch {"
+    AppendToUserScript '    Write-Error $_'
+    AppendToUserScript "}"
 }
 
 if (!$repoCloned)
 {
     # make directory if it doesn't exist
-    AppendToUserScript "  if (!(Test-Path -PathType Container '$($Directory)')) {"
-    AppendToUserScript "      New-Item -Path '$($Directory)' -ItemType Directory"
-    AppendToUserScript "  }"
+    AppendToUserScript "if (!(Test-Path -PathType Container '$($Directory)')) {"
+    AppendToUserScript "    New-Item -Path '$($Directory)' -ItemType Directory"
+    AppendToUserScript "}"
 
     # Work from specified directory, clone the repo and change branch if needed
-    AppendToUserScript "  Push-Location $($Directory)"
+    AppendToUserScript "Push-Location $($Directory)"
     if ($Branch) {
-        AppendToUserScript "  git clone -b $($Branch) $($RepositoryUrl)"
+        AppendToUserScript "git clone -b $($Branch) $($RepositoryUrl)"
     }
     else {
-        AppendToUserScript "  git clone $($RepositoryUrl)"
+        AppendToUserScript "git clone $($RepositoryUrl)"
     }
-    AppendToUserScript "  Pop-Location"
+    AppendToUserScript "Pop-Location"
 }
-AppendToUserScript "  Pop-Location"
-
-# Send output streams to log file
-AppendToUserScript "} *>> `$env:TEMP\git-cloning.log"
+AppendToUserScript "Pop-Location"
 
 Write-Host "Done writing commands to user script"
 
