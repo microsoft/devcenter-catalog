@@ -6,7 +6,7 @@ $CleanupScript = "cleanup.ps1"
 $RunAsUserTask = "DevBoxCustomizations"
 $CleanupTask = "DevBoxCustomizationsCleanup"
 
-Start-Transcript -Path $env:TEMP\scheduled-task-customization.logg -Append -IncludeInvocationHeader
+Start-Transcript -Path $env:TEMP\scheduled-task-customization.log -Append -IncludeInvocationHeader
 
 Write-Host "Microsoft Dev Box - Customizations"
 Write-Host "----------------------------------"
