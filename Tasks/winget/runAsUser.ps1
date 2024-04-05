@@ -23,7 +23,7 @@ if (!(Get-AppxPackage Microsoft.DesktopAppInstaller -ErrorAction SilentlyContinu
     $tempFileName = [System.IO.Path]::GetRandomFileName()
     $DesktopAppInstallerAppx = "$env:TEMP\$tempFileName-DesktopAppInstaller.appx"
     try {
-        $null = Invoke-WebRequest -Uri "https://aka.ms/getwinget" -OutFile $DesktopAppInstallerAppx
+        Invoke-WebRequest -Uri "https://aka.ms/getwinget" -OutFile $DesktopAppInstallerAppx
 
         # install the DesktopAppInstaller appx package
         Add-AppxPackage -Path $DesktopAppInstallerAppx -ForceApplicationShutdown
@@ -32,6 +32,7 @@ if (!(Get-AppxPackage Microsoft.DesktopAppInstaller -ErrorAction SilentlyContinu
     }
     catch {
         Write-Error "Failed to install DesktopAppInstaller appx package"
+        Write-Error $_
     }
 }
 else {
