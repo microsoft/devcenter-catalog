@@ -128,6 +128,7 @@ function InstallPS7 {
 
 function InstallWinGet {
     $actionTaken = $false
+
     # check if the Microsoft.Winget.Client module is installed
     if (!(Get-Module -ListAvailable -Name Microsoft.Winget.Client)) {
         Write-Host "Installing Microsoft.Winget.Client"
