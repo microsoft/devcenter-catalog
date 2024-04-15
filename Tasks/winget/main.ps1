@@ -167,6 +167,20 @@ function InstallWinGet {
         Write-Host "Microsoft.WinGet.Configuration is already installed"
     }
 
+    # if scope is CurrentUser, we need to update WinGet
+    if ($psInstallScope -eq "CurrentUser") {
+        Write-Host "Updating WinGet"
+
+        try {
+            Repair-WinGetPackageManager -Latest -Force
+            Write-Host "Done Updating WinGet"
+        }
+        catch {
+            Write-Error "Failed to update WinGet"
+            Write-Error $_
+        }
+    }
+
     # if scope is CurrentUser, we need to ensure AppInstaller is installed
     if ($psInstallScope -eq "CurrentUser") {
         # we're not running as system, so install Microsoft.DesktopAppInstaller
