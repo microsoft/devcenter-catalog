@@ -16,6 +16,17 @@ Write-Host "Waiting on OneDrive initialization..."
 Start-Sleep -Seconds 120
 Remove-Item -Path "$($CustomizationScriptsDir)\$($LockFile)"
 
+Write-Host "Updating WinGet"
+
+try {
+    Repair-WinGetPackageManager -Latest -Force
+    Write-Host "Done Updating WinGet"
+}
+catch {
+    Write-Error "Failed to update WinGet"
+    Write-Error $_
+
+
 # install Microsoft.DesktopAppInstaller
 if (!(Get-AppxPackage Microsoft.DesktopAppInstaller -ErrorAction SilentlyContinue)) {
     Write-Host "Installing Microsoft.DesktopAppInstaller"
