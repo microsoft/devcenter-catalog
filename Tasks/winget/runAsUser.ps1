@@ -25,6 +25,7 @@ try {
 catch {
     Write-Error "Failed to update WinGet"
     Write-Error $_
+}
 
 
 # install Microsoft.DesktopAppInstaller
