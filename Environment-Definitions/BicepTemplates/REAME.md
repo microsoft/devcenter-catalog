@@ -6,6 +6,7 @@ This template folder contains a suite of templates deployed through Bicep. Deplo
 
 You can deploy the following test templates to ADE:
 - [AppConfig](./AppConfig/appconfig.bicep) Will deploy infrastructure to create an App Configuration
+- [ContainerApp](./ContainerApp/main.bicep) Will deploy a Log Analytics Workspace, a Container App Environment, and a Container App from a specified image
 
 ### Learn more about Bicep
 
