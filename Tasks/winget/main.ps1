@@ -127,8 +127,6 @@ function InstallPS7 {
 }
 
 function InstallWinGet {
-    $actionTaken = $false
-
     $psInstallScope = "CurrentUser"
     $whoami = whoami.exe
     if ($whoami -eq "nt authority\system") {
@@ -146,7 +144,6 @@ function InstallWinGet {
         Install-Module Microsoft.WinGet.Client -Scope $psInstallScope
 
         Write-Host "Done Installing Microsoft.Winget.Client"
-        $actionTaken = $true
     }
     else {
         Write-Host "Microsoft.Winget.Client is already installed"
@@ -161,58 +158,27 @@ function InstallWinGet {
         pwsh.exe -MTA -Command "Install-Module Microsoft.WinGet.Configuration -AllowPrerelease -Scope $psInstallScope"
 
         Write-Host "Done Installing Microsoft.WinGet.Configuration"
-        $actionTaken = $true
     }
     else {
         Write-Host "Microsoft.WinGet.Configuration is already installed"
     }
 
-    # if scope is CurrentUser, we need to update WinGet
-    if ($psInstallScope -eq "CurrentUser") {
-        Write-Host "Updating WinGet"
-
-        try {
-            Repair-WinGetPackageManager -Latest -Force
-            Write-Host "Done Updating WinGet"
-        }
-        catch {
-            Write-Error "Failed to update WinGet"
-            Write-Error $_
-        }
+    Write-Host "Updating WinGet"
+    try {
+        Repair-WinGetPackageManager -Latest -Force
+        Write-Host "Done Updating WinGet"
+    }
+    catch {
+        Write-Error "Failed to update WinGet"
+        Write-Error $_
     }
 
-    # if scope is CurrentUser, we need to ensure AppInstaller is installed
-    if ($psInstallScope -eq "CurrentUser") {
-        # we're not running as system, so install Microsoft.DesktopAppInstaller
-        if (!(Get-AppxPackage Microsoft.DesktopAppInstaller -ErrorAction SilentlyContinue)) {
-            Write-Host "Installing Microsoft.DesktopAppInstaller"
-            # download the DesktopAppInstaller appx package to $env:TEMP
-            $tempFileName = [System.IO.Path]::GetRandomFileName()
-            $DesktopAppInstallerAppx = "$env:TEMP\$tempFileName-DesktopAppInstaller.appx"
-            try {
-                $null = Invoke-WebRequest -Uri "https://aka.ms/getwinget" -OutFile $DesktopAppInstallerAppx
-
-                # install the DesktopAppInstaller appx package
-                Add-AppxPackage -Path $DesktopAppInstallerAppx -ForceApplicationShutdown
-
-                Write-Host "Done Installing Microsoft.DesktopAppInstaller"
-                $actionTaken = $true
-            }
-            catch {
-                Write-Error "Failed to install DesktopAppInstaller appx package"
-                Write-Error $_
-            }
-        }
-        else {
-            Write-Host "Microsoft.DesktopAppInstaller is already installed"
-        }
-    }
-
-    return $actionTaken
+    # Revert PSGallery installation policy to untrusted
+    Set-PSRepository -Name "PSGallery" -InstallationPolicy Untrusted
 }
 
 InstallPS7
-$installed_winget = InstallWinGet
+InstallWinGet
 
 function AppendToUserScript {
     Param(
@@ -277,14 +243,6 @@ if ($RunAsUser -eq "true") {
     }
 
     Write-Host "Writing commands to user script"
-
-    if ($installed_winget) {
-        AppendToUserScript "try {"
-        AppendToUserScript "    Repair-WinGetPackageManager -Latest"
-        AppendToUserScript "} catch {"
-        AppendToUserScript '    Write-Error $_'
-        AppendToUserScript "}"
-    }
 
     # We're running in package mode:
     if ($Package) {
