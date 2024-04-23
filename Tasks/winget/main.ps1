@@ -173,6 +173,36 @@ function InstallWinGet {
         Write-Error $_
     }
 
+    if ($psInstallScope == "CurrentUser") {
+        # instal Microsoft.UI.Xaml
+        try{
+            $MsUiXaml = "$env:TEMP\$([System.IO.Path]::GetRandomFileName())-Microsoft.UI.Xaml.2.8.6"
+            $MsUiXamlZip = "$($MsUiXaml).zip"
+            Invoke-WebRequest -Uri "https://www.nuget.org/api/v2/package/Microsoft.UI.Xaml/2.8.6" -OutFile $MsUiXamlZip
+            Expand-Archive $MsUiXamlZip -DestinationPath $MsUiXaml
+            Add-AppxPackage -Path "$($MsUiXaml)\tools\AppX\x64\Release\Microsoft.UI.Xaml.2.8.appx" -ForceApplicationShutdown
+            Write-Host "Done Installing Microsoft.UI.Xaml"
+        } catch {
+            Write-Error "Failed to install Microsoft.UI.Xaml"
+            Write-Error $_
+        }
+
+        # install Microsoft.DesktopAppInstaller
+        try {
+            $DesktopAppInstallerAppx = "$env:TEMP\$([System.IO.Path]::GetRandomFileName())-DesktopAppInstaller.appx"
+            Invoke-WebRequest -Uri "https://aka.ms/getwinget" -OutFile $DesktopAppInstallerAppx
+
+            # install the DesktopAppInstaller appx package
+            Add-AppxPackage -Path $DesktopAppInstallerAppx -ForceApplicationShutdown
+
+            Write-Host "Done Installing Microsoft.DesktopAppInstaller"
+        }
+        catch {
+            Write-Error "Failed to install DesktopAppInstaller appx package"
+            Write-Error $_
+        }
+    }
+
     # Revert PSGallery installation policy to untrusted
     Set-PSRepository -Name "PSGallery" -InstallationPolicy Untrusted
 }
