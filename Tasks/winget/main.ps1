@@ -173,7 +173,7 @@ function InstallWinGet {
         Write-Error $_
     }
 
-    if ($psInstallScope == "CurrentUser") {
+    if ($psInstallScope -eq "CurrentUser") {
         # instal Microsoft.UI.Xaml
         try{
             $MsUiXaml = "$env:TEMP\$([System.IO.Path]::GetRandomFileName())-Microsoft.UI.Xaml.2.8.6"
