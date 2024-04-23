@@ -176,15 +176,15 @@ function InstallWinGet {
     if ($psInstallScope -eq "CurrentUser") {
         # instal Microsoft.UI.Xaml
         try{
-            $architechture = "x64"
+            $architecture = "x64"
             if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
-                $architechture = "arm64"
+                $architecture = "arm64"
             }
             $MsUiXaml = "$env:TEMP\$([System.IO.Path]::GetRandomFileName())-Microsoft.UI.Xaml.2.8.6"
             $MsUiXamlZip = "$($MsUiXaml).zip"
             Invoke-WebRequest -Uri "https://www.nuget.org/api/v2/package/Microsoft.UI.Xaml/2.8.6" -OutFile $MsUiXamlZip
             Expand-Archive $MsUiXamlZip -DestinationPath $MsUiXaml
-            Add-AppxPackage -Path "$($MsUiXaml)\tools\AppX\$($architechture)\Release\Microsoft.UI.Xaml.2.8.appx" -ForceApplicationShutdown
+            Add-AppxPackage -Path "$($MsUiXaml)\tools\AppX\$($architecture)\Release\Microsoft.UI.Xaml.2.8.appx" -ForceApplicationShutdown
             Write-Host "Done Installing Microsoft.UI.Xaml"
         } catch {
             Write-Error "Failed to install Microsoft.UI.Xaml"
