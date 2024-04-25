@@ -298,17 +298,32 @@ if ($RunAsUser -eq "true") {
 # We're running in the provisioning context:
 else {
     Write-Host "Running in the provisioning context"
+    $tempOutFile = [System.IO.Path]::GetTempFileName() + ".out.json"
 
     # We're running in package mode:
     if ($Package) {
         Write-Host "Running package install: $($Package)"
-        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe -MTA -Command `"Install-WinGetPackage -Id $($Package)`""}
+        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe -MTA -Command `"Install-WinGetPackage -Id $($Package) | ConvertTo-Json -Depth 10 > $($tempOutFile)`""}
         $process = Get-Process -Id $processCreation.ProcessId
         $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
         $process.WaitForExit()
         $installExitCode = $process.ExitCode
+        # read the output file and write it to the console
+        $unitResults = Get-Content -Path $tempOutFile
+        Remove-Item -Path $tempOutFile -Force
+        Write-Host "Unit results:"
+        Write-Host $unitResults
+
         if ($installExitCode -ne 0) {
             Write-Error "Failed to install package. Exit code: $installExitCode"
+            exit 1
+        }
+
+        # If there are any errors in the package installation, we need to exit with a non-zero code
+        $unitResultsObject = $unitResults | ConvertFrom-Json -Depth 10
+        if ($unitResultsObject.InstallerErrorCode -ne "0") {
+            Write-Error "There were errors installing the package"
+            Write-Error $unitResultsObject
             exit 1
         }
     }
@@ -316,13 +331,28 @@ else {
     elseif ($ConfigurationFile) {
         Write-Host "Running installation of configuration file: $($ConfigurationFile)"
 
-        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe -MTA -Command `"Get-WinGetConfiguration -File $($ConfigurationFile) | Invoke-WinGetConfiguration -AcceptConfigurationAgreements`""}
+        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe -MTA -Command `"Get-WinGetConfiguration -File $($ConfigurationFile) | Invoke-WinGetConfiguration -AcceptConfigurationAgreements | Select-Object -ExpandProperty UnitResults | ConvertTo-Json -Depth 10 > $($tempOutFile)`""}
         $process = Get-Process -Id $processCreation.ProcessId
         $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
         $process.WaitForExit()
         $installExitCode = $process.ExitCode
+        # read the output file and write it to the console
+        $unitResults = Get-Content -Path $tempOutFile
+        Remove-Item -Path $tempOutFile -Force
+        Write-Host "Unit results:"
+        Write-Host $unitResults
+
         if ($installExitCode -ne 0) {
             Write-Error "Failed to install packages. Exit code: $installExitCode"
+            exit 1
+        }
+
+        # If there are any errors in the unit results, we need to exit with a non-zero code
+        $unitResultsObject = $unitResults | ConvertFrom-Json -Depth 10
+        $errors = $unitResultsObject | Where-Object { $_.ResultCode -ne "0" }
+        if ($errors) {
+            Write-Error "There were errors applying the configuration"
+            Write-Error $errors
             exit 1
         }
     }
