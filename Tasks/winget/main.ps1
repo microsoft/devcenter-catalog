@@ -311,7 +311,7 @@ else {
         # read the output file and write it to the console
         $unitResults = Get-Content -Path $tempOutFile
         Remove-Item -Path $tempOutFile -Force
-        Write-Host "Unit results:"
+        Write-Host "Results:"
         Write-Host $unitResults
 
         if ($installExitCode -ne 0) {
@@ -320,8 +320,8 @@ else {
         }
 
         # If there are any errors in the package installation, we need to exit with a non-zero code
-        $unitResultsObject = $unitResults | ConvertFrom-Json -Depth 10
-        if ($unitResultsObject.InstallerErrorCode -ne "0") {
+        $unitResultsObject = $unitResults | ConvertFrom-Json
+        if ($unitResultsObject.Status -ne "Ok") {
             Write-Error "There were errors installing the package"
             Write-Error $unitResultsObject
             exit 1
@@ -339,7 +339,7 @@ else {
         # read the output file and write it to the console
         $unitResults = Get-Content -Path $tempOutFile
         Remove-Item -Path $tempOutFile -Force
-        Write-Host "Unit results:"
+        Write-Host "Results:"
         Write-Host $unitResults
 
         if ($installExitCode -ne 0) {
@@ -348,7 +348,7 @@ else {
         }
 
         # If there are any errors in the unit results, we need to exit with a non-zero code
-        $unitResultsObject = $unitResults | ConvertFrom-Json -Depth 10
+        $unitResultsObject = $unitResults | ConvertFrom-Json
         $errors = $unitResultsObject | Where-Object { $_.ResultCode -ne "0" }
         if ($errors) {
             Write-Error "There were errors applying the configuration"
