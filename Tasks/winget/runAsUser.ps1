@@ -6,6 +6,12 @@ $CleanupScript = "cleanup.ps1"
 $RunAsUserTask = "DevBoxCustomizations"
 $CleanupTask = "DevBoxCustomizationsCleanup"
 
+# Set the progress preference to silently continue
+# in order to avoid progress bars in the output
+# as this makes web requests very slow
+# Reference: https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_preference_variables
+$ProgressPreference = 'SilentlyContinue'
+
 Start-Transcript -Path $env:TEMP\scheduled-task-customization.log -Append -IncludeInvocationHeader
 
 Write-Host "Microsoft Dev Box - Customizations"
@@ -18,38 +24,44 @@ Remove-Item -Path "$($CustomizationScriptsDir)\$($LockFile)"
 
 Write-Host "Updating WinGet"
 
-# instal Microsoft.UI.Xaml
-try{
-    $architecture = "x64"
-    if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
-        $architecture = "arm64"
+if (!(Get-AppxPackage -Name "Microsoft.UI.Xaml.2.8")){
+    # instal Microsoft.UI.Xaml
+    try{
+        $architecture = "x64"
+        if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
+            $architecture = "arm64"
+        }
+        $MsUiXaml = "$env:TEMP\$([System.IO.Path]::GetRandomFileName())-Microsoft.UI.Xaml.2.8.6"
+        $MsUiXamlZip = "$($MsUiXaml).zip"
+        Invoke-WebRequest -Uri "https://www.nuget.org/api/v2/package/Microsoft.UI.Xaml/2.8.6" -OutFile $MsUiXamlZip
+        Expand-Archive $MsUiXamlZip -DestinationPath $MsUiXaml
+        Add-AppxPackage -Path "$($MsUiXaml)\tools\AppX\$($architecture)\Release\Microsoft.UI.Xaml.2.8.appx" -ForceApplicationShutdown
+        Write-Host "Done Installing Microsoft.UI.Xaml"
+    } catch {
+        Write-Error "Failed to install Microsoft.UI.Xaml"
+        Write-Error $_
     }
-    $MsUiXaml = "$env:TEMP\$([System.IO.Path]::GetRandomFileName())-Microsoft.UI.Xaml.2.8.6"
-    $MsUiXamlZip = "$($MsUiXaml).zip"
-    Invoke-WebRequest -Uri "https://www.nuget.org/api/v2/package/Microsoft.UI.Xaml/2.8.6" -OutFile $MsUiXamlZip
-    Expand-Archive $MsUiXamlZip -DestinationPath $MsUiXaml
-    Add-AppxPackage -Path "$($MsUiXaml)\tools\AppX\$($architecture)\Release\Microsoft.UI.Xaml.2.8.appx" -ForceApplicationShutdown
-    Write-Host "Done Installing Microsoft.UI.Xaml"
-} catch {
-    Write-Error "Failed to install Microsoft.UI.Xaml"
-    Write-Error $_
 }
 
-# install Microsoft.DesktopAppInstaller
-try {
-    $DesktopAppInstallerAppx = "$env:TEMP\$([System.IO.Path]::GetRandomFileName())-DesktopAppInstaller.appx"
-    Invoke-WebRequest -Uri "https://aka.ms/getwinget" -OutFile $DesktopAppInstallerAppx
+$desktopAppInstallerPackage = Get-AppxPackage -Name "Microsoft.DesktopAppInstaller"
+if (!($desktopAppInstallerPackage) -or ($desktopAppInstallerPackage.Version -lt "1.22.0.0")) {
+    # install Microsoft.DesktopAppInstaller
+    try {
+        $DesktopAppInstallerAppx = "$env:TEMP\$([System.IO.Path]::GetRandomFileName())-DesktopAppInstaller.appx"
+        Invoke-WebRequest -Uri "https://aka.ms/getwinget" -OutFile $DesktopAppInstallerAppx
 
-    # install the DesktopAppInstaller appx package
-    Add-AppxPackage -Path $DesktopAppInstallerAppx -ForceApplicationShutdown
+        # install the DesktopAppInstaller appx package
+        Add-AppxPackage -Path $DesktopAppInstallerAppx -ForceApplicationShutdown
 
-    Write-Host "Done Installing Microsoft.DesktopAppInstaller"
-}
-catch {
-    Write-Error "Failed to install DesktopAppInstaller appx package"
-    Write-Error $_
+        Write-Host "Done Installing Microsoft.DesktopAppInstaller"
+    }
+    catch {
+        Write-Error "Failed to install DesktopAppInstaller appx package"
+        Write-Error $_
+    }
 }
 
 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+Write-Host "Done Updating WinGet"
 
 
