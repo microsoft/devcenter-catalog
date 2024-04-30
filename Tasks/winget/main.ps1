@@ -297,7 +297,7 @@ if ($RunAsUser -eq "true") {
     # We're running in package mode:
     if ($Package) {
         Write-Host "Appending package install: $($Package)"
-        AppendToUserScript "winget install --id `"$($Package)`""
+        AppendToUserScript "winget install --id `"$($Package)`" --accept-source-agreements --accept-package-agreements"
         AppendToUserScript "Write-Host `"winget exit code: `$LASTEXITCODE`""
     }
     # We're running in configuration file mode:
