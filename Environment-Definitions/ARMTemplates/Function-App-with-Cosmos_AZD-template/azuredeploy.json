@@ -3806,13 +3806,9 @@
       "type": "string",
       "value": "[tenant().tenantId]"
     },
-    "REACT_APP_API_BASE_URL": {
+    "API_BASE_URL": {
       "type": "string",
       "value": "[if(parameters('useAPIM'), reference(resourceId('Microsoft.Resources/deployments', 'apim-api-deployment'), '2022-09-01').outputs.SERVICE_API_URI.value, reference(resourceId('Microsoft.Resources/deployments', 'api'), '2022-09-01').outputs.SERVICE_API_URI.value)]"
-    },
-    "REACT_APP_APPLICATIONINSIGHTS_CONNECTION_STRING": {
-      "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'monitoring'), '2022-09-01').outputs.applicationInsightsConnectionString.value]"
     },
     "REACT_APP_WEB_BASE_URL": {
       "type": "string",
