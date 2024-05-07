@@ -23,10 +23,40 @@ Start-Sleep -Seconds 120
 Remove-Item -Path "$($CustomizationScriptsDir)\$($LockFile)"
 
 Write-Host "Updating WinGet"
+# ensure NuGet provider is installed
+if (!(Get-PackageProvider | Where-Object { $_.Name -eq "NuGet" -and $_.Version -gt "3.0.0.0" })) {
+    Write-Host "Installing NuGet provider"
+    Install-PackageProvider -Name "NuGet" -MinimumVersion "3.0.0.0" -Force -Scope $PsInstallScope
+    Write-Host "Done Installing NuGet provider"
+}
+else {
+    Write-Host "NuGet provider is already installed"
+}
+
+# check if the Microsoft.Winget.Client module is installed
+if (!(Get-Module -ListAvailable -Name Microsoft.Winget.Client)) {
+    Write-Host "Installing Microsoft.Winget.Client"
+    Install-Module Microsoft.WinGet.Client -Scope $PsInstallScope
+    Write-Host "Done Installing Microsoft.Winget.Client"
+}
+else {
+    Write-Host "Microsoft.Winget.Client is already installed"
+}
+
+# check if the Microsoft.WinGet.Configuration module is installed
+if (!(Get-Module -ListAvailable -Name Microsoft.WinGet.Configuration)) {
+    Write-Host "Installing Microsoft.WinGet.Configuration"
+    pwsh.exe -MTA -Command "Install-Module Microsoft.WinGet.Configuration -AllowPrerelease -Scope $PsInstallScope"
+    Write-Host "Done Installing Microsoft.WinGet.Configuration"
+}
+else {
+    Write-Host "Microsoft.WinGet.Configuration is already installed"
+}
 
 if (!(Get-AppxPackage -Name "Microsoft.UI.Xaml.2.8")){
     # instal Microsoft.UI.Xaml
     try{
+        Write-Host "Installing Microsoft.UI.Xaml"
         $architecture = "x64"
         if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
             $architecture = "arm64"
@@ -47,6 +77,7 @@ $desktopAppInstallerPackage = Get-AppxPackage -Name "Microsoft.DesktopAppInstall
 if (!($desktopAppInstallerPackage) -or ($desktopAppInstallerPackage.Version -lt "1.22.0.0")) {
     # install Microsoft.DesktopAppInstaller
     try {
+        Write-Host "Installing Microsoft.DesktopAppInstaller"
         $DesktopAppInstallerAppx = "$env:TEMP\$([System.IO.Path]::GetRandomFileName())-DesktopAppInstaller.appx"
         Invoke-WebRequest -Uri "https://aka.ms/getwinget" -OutFile $DesktopAppInstallerAppx
 
@@ -60,6 +91,9 @@ if (!($desktopAppInstallerPackage) -or ($desktopAppInstallerPackage.Version -lt 
         Write-Error $_
     }
 }
+
+Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
+Write-Host "WinGet version: $(winget -v)"
 
 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 Write-Host "Done Updating WinGet"
