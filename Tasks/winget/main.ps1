@@ -145,14 +145,23 @@ function InstallPS7 {
 function InstallWinGet {
     Write-Host "Installing powershell modules in scope: $PsInstallScope"
 
+    # Set PSGallery installation policy to trusted
+    Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
+
+    # ensure NuGet provider is installed
+    if (!(Get-PackageProvider | Where-Object { $_.Name -eq "NuGet" -and $_.Version -gt "3.0.0.0" })) {
+        Write-Host "Installing NuGet provider"
+        Install-PackageProvider -Name "NuGet" -MinimumVersion "3.0.0.0" -Force -Scope $PsInstallScope
+        Write-Host "Done Installing NuGet provider"
+    }
+    else {
+        Write-Host "NuGet provider is already installed"
+    }
+
     # check if the Microsoft.Winget.Client module is installed
     if (!(Get-Module -ListAvailable -Name Microsoft.Winget.Client)) {
         Write-Host "Installing Microsoft.Winget.Client"
-        Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope $PsInstallScope
-        Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
-
         Install-Module Microsoft.WinGet.Client -Scope $PsInstallScope
-
         Write-Host "Done Installing Microsoft.Winget.Client"
     }
     else {
@@ -162,11 +171,7 @@ function InstallWinGet {
     # check if the Microsoft.WinGet.Configuration module is installed
     if (!(Get-Module -ListAvailable -Name Microsoft.WinGet.Configuration)) {
         Write-Host "Installing Microsoft.WinGet.Configuration"
-        Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope $PsInstallScope
-        Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
-
         pwsh.exe -MTA -Command "Install-Module Microsoft.WinGet.Configuration -AllowPrerelease -Scope $PsInstallScope"
-
         Write-Host "Done Installing Microsoft.WinGet.Configuration"
     }
     else {
@@ -209,10 +214,7 @@ function InstallWinGet {
             try {
                 $DesktopAppInstallerAppx = "$env:TEMP\$([System.IO.Path]::GetRandomFileName())-DesktopAppInstaller.appx"
                 Invoke-WebRequest -Uri "https://aka.ms/getwinget" -OutFile $DesktopAppInstallerAppx
-
-                # install the DesktopAppInstaller appx package
                 Add-AppxPackage -Path $DesktopAppInstallerAppx -ForceApplicationShutdown
-
                 Write-Host "Done Installing Microsoft.DesktopAppInstaller"
             }
             catch {
