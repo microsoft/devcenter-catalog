@@ -331,12 +331,13 @@ else {
         Write-Host "Running package install: $($Package)"
 
         # If there's a version passed, update the version parameter
+        $versionFlag = ""
         if ($Version -ne '') {
             Write-Host "Specifying version: $($Version)"
-            $Version = "-Version $Version"
+            $versionFlag = "-Version"
         }
         
-        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe $($mtaFlag) -Command `"Install-WinGetPackage -Id '$($Package)' $($Version) | ConvertTo-Json -Depth 10 > $($tempOutFile)`""}
+        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe $($mtaFlag) -Command `"Install-WinGetPackage -Id '$($Package)' $($versionFlag) '$($Version)' | ConvertTo-Json -Depth 10 > $($tempOutFile)`""}
         $process = Get-Process -Id $processCreation.ProcessId
         $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
         $process.WaitForExit()
