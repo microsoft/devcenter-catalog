@@ -332,6 +332,7 @@ else {
 
         # If there's a version passed, update the version parameter
         if ($Version -ne '') {
+            Write-Host "Specifying version: $($Version)"
             $Version = "-Version $Version"
         }
         
