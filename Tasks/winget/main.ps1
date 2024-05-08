@@ -180,11 +180,12 @@ function InstallWinGet {
 
     Write-Host "Updating WinGet"
     try {
+        Write-Host "Attempting to repair WinGet Package Manager"
         Repair-WinGetPackageManager -Latest -Force
-        Write-Host "Done Updating WinGet"
+        Write-Host "Done Reparing WinGet Package Manager"
     }
     catch {
-        Write-Error "Failed to update WinGet"
+        Write-Host "Failed to repair WinGet Package Manager"
         Write-Error $_
     }
 
@@ -204,7 +205,7 @@ function InstallWinGet {
                 Add-AppxPackage -Path "$($MsUiXaml)\tools\AppX\$($architecture)\Release\Microsoft.UI.Xaml.2.8.appx" -ForceApplicationShutdown
                 Write-Host "Done Installing Microsoft.UI.Xaml"
             } catch {
-                Write-Error "Failed to install Microsoft.UI.Xaml"
+                Write-Host "Failed to install Microsoft.UI.Xaml"
                 Write-Error $_
             }
         }
@@ -220,12 +221,14 @@ function InstallWinGet {
                 Write-Host "Done Installing Microsoft.DesktopAppInstaller"
             }
             catch {
-                Write-Error "Failed to install DesktopAppInstaller appx package"
+                Write-Host "Failed to install DesktopAppInstaller appx package"
                 Write-Error $_
             }
         }
 
+        Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+        Write-Host "WinGet version: $(winget -v)"
     }
 
     # Revert PSGallery installation policy to untrusted
