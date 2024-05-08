@@ -4,7 +4,7 @@ $schema: 1.0
 name: winget
 description: Applies a winget configuration to the Dev Box.
 author: Microsoft Corporation
-command: './main.ps1 -ConfigurationFile {{configurationFile}} -DownloadUrl {{downloadUrl}} -InlineConfigurationBase64 {{inlineConfigurationBase64}} -Package {{package}} -RunAsUser {{runAsUser}}'
+command: './main.ps1 -ConfigurationFile {{configurationFile}} -DownloadUrl {{downloadUrl}} -InlineConfigurationBase64 {{inlineConfigurationBase64}} -Package {{package}} -Version {{version}} -RunAsUser {{runAsUser}}'
 parameters:
   configurationFile:
     default: ''
@@ -31,6 +31,13 @@ parameters:
     description: |
       The name of the package to install. This is an alternative way. 
       If a config yaml file is provided under other parameters, there is no need for the package name.
+  version:
+    default: ''
+    type: 'string'
+    required: false
+    description: |
+      The version of the package to install.
+      If a config yaml file is provided under other parameters, there is no need for the package version.
   runAsUser:
     default: false
     type: 'boolean'
