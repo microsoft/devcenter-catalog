@@ -289,12 +289,6 @@ elseif ($DownloadUrl) {
 }
 
 $versionFlag = ""
-# If there's a version passed, add the version flag
-if ($Version -ne '') {
-    Write-Host "Specifying version: $($Version)"
-    $versionFlag = "-Version"
-}
-
 # We're running as user via scheduled task:
 if ($RunAsUser -eq "true") {
     Write-Host "Running as user via scheduled task"
@@ -307,6 +301,11 @@ if ($RunAsUser -eq "true") {
 
     # We're running in package mode:
     if ($Package) {
+        # If there's a version passed, add the version flag for CLI
+        if ($Version -ne '') {
+            Write-Host "Specifying version: $($Version)"
+            $versionFlag = "--version"
+        }
         Write-Host "Appending package install: $($Package)"
         AppendToUserScript "winget install --id `"$($Package)`" $($versionFlag) `"$($Version)`" --accept-source-agreements --accept-package-agreements"
         AppendToUserScript "Write-Host `"winget exit code: `$LASTEXITCODE`""
@@ -336,7 +335,13 @@ else {
     # We're running in package mode:
     if ($Package) {
         Write-Host "Running package install: $($Package)"
-           
+
+        # If there's a version passed, add the version flag for PS
+        if ($Version -ne '') {
+            Write-Host "Specifying version: $($Version)"
+            $versionFlag = "-Version"
+        }
+
         $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe $($mtaFlag) -Command `"Install-WinGetPackage -Id '$($Package)' $($versionFlag) '$($Version)' | ConvertTo-Json -Depth 10 > $($tempOutFile)`""}
         $process = Get-Process -Id $processCreation.ProcessId
         $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
