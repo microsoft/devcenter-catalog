@@ -68,7 +68,7 @@ if (!(Get-AppxPackage -Name "Microsoft.UI.Xaml.2.8")){
         Add-AppxPackage -Path "$($MsUiXaml)\tools\AppX\$($architecture)\Release\Microsoft.UI.Xaml.2.8.appx" -ForceApplicationShutdown
         Write-Host "Done Installing Microsoft.UI.Xaml"
     } catch {
-        Write-Error "Failed to install Microsoft.UI.Xaml"
+        Write-Host "Failed to install Microsoft.UI.Xaml"
         Write-Error $_
     }
 }
@@ -87,7 +87,7 @@ if (!($desktopAppInstallerPackage) -or ($desktopAppInstallerPackage.Version -lt 
         Write-Host "Done Installing Microsoft.DesktopAppInstaller"
     }
     catch {
-        Write-Error "Failed to install DesktopAppInstaller appx package"
+        Write-Host "Failed to install DesktopAppInstaller appx package"
         Write-Error $_
     }
 }
