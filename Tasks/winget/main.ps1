@@ -192,6 +192,7 @@ function InstallWinGet {
         if (!(Get-AppxPackage -Name "Microsoft.UI.Xaml.2.8")){
             # instal Microsoft.UI.Xaml
             try {
+                Write-Host "Installing Microsoft.UI.Xaml"
                 $architecture = "x64"
                 if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
                     $architecture = "arm64"
@@ -212,6 +213,7 @@ function InstallWinGet {
         if (!($desktopAppInstallerPackage) -or ($desktopAppInstallerPackage.Version -lt "1.22.0.0")) {
             # install Microsoft.DesktopAppInstaller
             try {
+                Write-Host "Installing Microsoft.DesktopAppInstaller"
                 $DesktopAppInstallerAppx = "$env:TEMP\$([System.IO.Path]::GetRandomFileName())-DesktopAppInstaller.appx"
                 Invoke-WebRequest -Uri "https://aka.ms/getwinget" -OutFile $DesktopAppInstallerAppx
                 Add-AppxPackage -Path $DesktopAppInstallerAppx -ForceApplicationShutdown
@@ -305,7 +307,6 @@ if ($RunAsUser -eq "true") {
     # We're running in configuration file mode:
     elseif ($ConfigurationFile) {
         Write-Host "Appending installation of configuration file: $($ConfigurationFile)"
-
         AppendToUserScript "winget configure --file `"$($ConfigurationFile)`" --accept-configuration-agreements"
         AppendToUserScript "Write-Host `"winget exit code: `$LASTEXITCODE`""
     }
