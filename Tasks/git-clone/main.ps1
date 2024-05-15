@@ -16,6 +16,16 @@ $RunAsUserScript = "runAsUser.ps1"
 $CleanupScript = "cleanup.ps1"
 $RunAsUserTask = "DevBoxCustomizations"
 $CleanupTask = "DevBoxCustomizationsCleanup"
+$PsInstallScope = "CurrentUser"
+if ($(whoami.exe) -eq "nt authority\system") {
+    $PsInstallScope = "AllUsers"
+}
+
+# Set the progress preference to silently continue
+# in order to avoid progress bars in the output
+# as this makes web requests very slow
+# Reference: https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_preference_variables
+$ProgressPreference = 'SilentlyContinue'
 
 function SetupScheduledTasks {
     Write-Host "Setting up scheduled tasks"
@@ -105,7 +115,13 @@ function InstallPS7 {
         $code = Invoke-RestMethod -Uri https://aka.ms/install-powershell.ps1
         $null = New-Item -Path function:Install-PowerShell -Value $code
         WithRetry -ScriptBlock {
-            Install-PowerShell -UseMSI -Quiet
+            if ("$($PsInstallScope)" -eq "CurrentUser") {
+                Install-PowerShell -UseMSI
+            }
+            else {
+                # The -Quiet flag requires admin permissions
+                Install-PowerShell -UseMSI -Quiet
+            }
         } -Maximum 5 -Delay 100
         # Need to update the path post install
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
@@ -117,26 +133,99 @@ function InstallPS7 {
 }
 
 function InstallWinGet {
-    # check if the Microsoft.Winget.Configuration module is installed
-    if (!(Get-Module -ListAvailable -Name Microsoft.Winget.Client)) {
-        Write-Host "Installing WinGet"
-        Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope AllUsers
-        Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
+    Write-Host "Installing powershell modules in scope: $PsInstallScope"
 
-        Install-Module Microsoft.WinGet.Client -Scope AllUsers
+    # Set PSGallery installation policy to trusted
+    Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
 
-        pwsh.exe -MTA -Command "Install-Module Microsoft.WinGet.Configuration -AllowPrerelease -Scope AllUsers"
-        Write-Host "Done Installing WinGet"
-        return $true
+    # ensure NuGet provider is installed
+    if (!(Get-PackageProvider | Where-Object { $_.Name -eq "NuGet" -and $_.Version -gt "3.0.0.0" })) {
+        Write-Host "Installing NuGet provider"
+        Install-PackageProvider -Name "NuGet" -MinimumVersion "3.0.0.0" -Force -Scope $PsInstallScope
+        Write-Host "Done Installing NuGet provider"
     }
     else {
-        Write-Host "WinGet is already installed"
-        return $false
+        Write-Host "NuGet provider is already installed"
     }
+
+    # check if the Microsoft.Winget.Client module is installed
+    if (!(Get-Module -ListAvailable -Name Microsoft.Winget.Client)) {
+        Write-Host "Installing Microsoft.Winget.Client"
+        Install-Module Microsoft.WinGet.Client -Scope $PsInstallScope
+        Write-Host "Done Installing Microsoft.Winget.Client"
+    }
+    else {
+        Write-Host "Microsoft.Winget.Client is already installed"
+    }
+
+    # check if the Microsoft.WinGet.Configuration module is installed
+    if (!(Get-Module -ListAvailable -Name Microsoft.WinGet.Configuration)) {
+        Write-Host "Installing Microsoft.WinGet.Configuration"
+        pwsh.exe -MTA -Command "Install-Module Microsoft.WinGet.Configuration -AllowPrerelease -Scope $PsInstallScope"
+        Write-Host "Done Installing Microsoft.WinGet.Configuration"
+    }
+    else {
+        Write-Host "Microsoft.WinGet.Configuration is already installed"
+    }
+
+    Write-Host "Updating WinGet"
+    try {
+        Write-Host "Attempting to repair WinGet Package Manager"
+        Repair-WinGetPackageManager -Latest -Force
+        Write-Host "Done Reparing WinGet Package Manager"
+    }
+    catch {
+        Write-Host "Failed to repair WinGet Package Manager"
+        Write-Error $_
+    }
+
+    if ($PsInstallScope -eq "CurrentUser") {
+        if (!(Get-AppxPackage -Name "Microsoft.UI.Xaml.2.8")){
+            # instal Microsoft.UI.Xaml
+            try {
+                Write-Host "Installing Microsoft.UI.Xaml"
+                $architecture = "x64"
+                if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
+                    $architecture = "arm64"
+                }
+                $MsUiXaml = "$env:TEMP\$([System.IO.Path]::GetRandomFileName())-Microsoft.UI.Xaml.2.8.6"
+                $MsUiXamlZip = "$($MsUiXaml).zip"
+                Invoke-WebRequest -Uri "https://www.nuget.org/api/v2/package/Microsoft.UI.Xaml/2.8.6" -OutFile $MsUiXamlZip
+                Expand-Archive $MsUiXamlZip -DestinationPath $MsUiXaml
+                Add-AppxPackage -Path "$($MsUiXaml)\tools\AppX\$($architecture)\Release\Microsoft.UI.Xaml.2.8.appx" -ForceApplicationShutdown
+                Write-Host "Done Installing Microsoft.UI.Xaml"
+            } catch {
+                Write-Host "Failed to install Microsoft.UI.Xaml"
+                Write-Error $_
+            }
+        }
+
+        $desktopAppInstallerPackage = Get-AppxPackage -Name "Microsoft.DesktopAppInstaller"
+        if (!($desktopAppInstallerPackage) -or ($desktopAppInstallerPackage.Version -lt "1.22.0.0")) {
+            # install Microsoft.DesktopAppInstaller
+            try {
+                Write-Host "Installing Microsoft.DesktopAppInstaller"
+                $DesktopAppInstallerAppx = "$env:TEMP\$([System.IO.Path]::GetRandomFileName())-DesktopAppInstaller.appx"
+                Invoke-WebRequest -Uri "https://aka.ms/getwinget" -OutFile $DesktopAppInstallerAppx
+                Add-AppxPackage -Path $DesktopAppInstallerAppx -ForceApplicationShutdown
+                Write-Host "Done Installing Microsoft.DesktopAppInstaller"
+            }
+            catch {
+                Write-Host "Failed to install DesktopAppInstaller appx package"
+                Write-Error $_
+            }
+        }
+
+        Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+        Write-Host "WinGet version: $(winget -v)"
+    }
+
+    # Revert PSGallery installation policy to untrusted
+    Set-PSRepository -Name "PSGallery" -InstallationPolicy Untrusted
 }
 
 # install git if it's not already installed
-$installed_winget = $false
 if (!(Get-Command git -ErrorAction SilentlyContinue)) {
     # if winget is available, use it to install git
     if (Get-Command winget -ErrorAction SilentlyContinue) {
@@ -166,7 +255,7 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
     if (!(Get-Command git -ErrorAction SilentlyContinue)) {
         # install winget and use that to install git
         InstallPS7
-        $installed_winget = InstallWinGet
+        InstallWinGet
         Write-Host "Installing git with Install-WinGetPackage"
         $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe -MTA -Command `"Install-WinGetPackage -Id Git.Git`""}
         if ($processCreation.ReturnValue -ne 0) {
@@ -389,13 +478,6 @@ if ($Branch) {
 
 # Work from C:\
 AppendToUserScript "Push-Location C:\"
-if ($installed_winget) {
-    AppendToUserScript "try{"
-    AppendToUserScript "    Repair-WinGetPackageManager -Latest"
-    AppendToUserScript "} catch {"
-    AppendToUserScript '    Write-Error $_'
-    AppendToUserScript "}"
-}
 
 if (!$repoCloned)
 {
@@ -414,6 +496,7 @@ if (!$repoCloned)
     }
     AppendToUserScript "Pop-Location"
 }
+
 AppendToUserScript "Pop-Location"
 
 Write-Host "Done writing commands to user script"
