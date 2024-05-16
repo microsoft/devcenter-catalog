@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.27.1.19265",
-      "templateHash": "16836073179965434623"
+      "templateHash": "2535963542860288603"
     }
   },
   "parameters": {
@@ -244,8 +244,8 @@
     "tags": {
       "azd-env-name": "[resourceGroup().name]"
     },
-    "apiRuntimeName": "[parameters('runtimeType')]",
-    "apiRuntimeVersion": "[if(equals(parameters('runtimeType'), 'java'), '17-java17', if(equals(parameters('runtimeType'), 'python'), '3.10', if(equals(parameters('runtimeType'), 'node'), '20-lts', '20-lts')))]",
+    "apiRuntimeName": "[if(equals(parameters('runtimeType'), 'nodejs'), 'node', parameters('runtimeType'))]",
+    "apiRuntimeVersion": "[if(equals(parameters('runtimeType'), 'java'), '17-java17', if(equals(parameters('runtimeType'), 'python'), '3.10', '20-lts'))]",
     "apiCommandLine": "[if(equals(parameters('runtimeType'), 'python'), 'gunicorn --workers 4 --threads 2 --timeout 60 --access-logfile \"-\" --error-logfile \"-\" --bind=0.0.0.0:8000 -k uvicorn.workers.UvicornWorker todo.app:app', '')]"
   },
   "resources": [
