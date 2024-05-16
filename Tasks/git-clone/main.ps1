@@ -20,6 +20,7 @@ $PsInstallScope = "CurrentUser"
 if ($(whoami.exe) -eq "nt authority\system") {
     $PsInstallScope = "AllUsers"
 }
+$TargetRepoDirectory = Join-Path -Path $Directory -ChildPath "$($RepositoryUrl -replace "^.+\/([^\/]+?)(?:\.git)?$", '$1')"
 
 # Set the progress preference to silently continue
 # in order to avoid progress bars in the output
@@ -295,6 +296,11 @@ if ($Pat) {
         # First we'll try to clone the repository using the provided PAT.
         Push-Location $Directory
         try {
+            # ensure the target directory doesn't exist
+            if (Test-Path -PathType Container $TargetRepoDirectory) {
+                Remove-Item -Recurse -Force $TargetRepoDirectory
+            }
+
             $b64pat = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("user:$Pat"))
             if ($Branch) {
                 git -c http.extraHeader="Authorization: Basic $b64pat" clone -b $Branch $RepositoryUrl 3>&1 2>&1
@@ -309,10 +315,7 @@ if ($Pat) {
             # If the code reaches this point, we've successfully cloned the repository.
             Write-Host "Successfully cloned repository: $($RepositoryUrl) to directory: $($Directory)"
             $repoCloned = $true
-            if (!$installed_winget)
-            {
-                exit 0 #Success!
-            }
+            exit 0 #Success!
         }
         catch {
             Write-Error $_
@@ -364,6 +367,11 @@ if ($Pat) {
                 $NormalizedRepositoryUrl = $NormalizedRepositoryUrl.Replace('{reponame}', $Matches.reponame)
                 $NormalizedRepositoryUrl = $NormalizedRepositoryUrl.Replace('{at}', $Pat)
 
+                # ensure the target directory doesn't exist
+                if (Test-Path -PathType Container $TargetRepoDirectory) {
+                    Remove-Item -Recurse -Force $TargetRepoDirectory
+                }
+
                 if ($Branch) {
                     git clone -b $Branch $NormalizedRepositoryUrl 3>&1 2>&1
                 }
@@ -377,10 +385,7 @@ if ($Pat) {
                 # If the code reaches this point, we've successfully cloned the repository.
                 Write-Host "Successfully cloned repository: $($RepositoryUrl) to directory: $($Directory)"
                 $repoCloned = $true
-                if (!$installed_winget)
-                {
-                    exit 0 #Success!
-                }
+                exit 0 #Success!
             }
             catch {
                 Write-Error $_
@@ -414,6 +419,11 @@ if (!$repoCloned -and ($RepositoryUrl -match "github.com")) {
         }
         Push-Location $Directory
         try {
+            # ensure the target directory doesn't exist
+            if (Test-Path -PathType Container $TargetRepoDirectory) {
+                Remove-Item -Recurse -Force $TargetRepoDirectory
+            }
+
             if ($Branch) {
                 git clone -b $Branch $RepositoryUrl 3>&1 2>&1
             }
@@ -426,10 +436,7 @@ if (!$repoCloned -and ($RepositoryUrl -match "github.com")) {
             # If the code reaches this point, we've successfully cloned the repository.
             Write-Host "Successfully cloned repository: $($RepositoryUrl) to directory: $($Directory)"
             $repoCloned = $true
-            if (!$installed_winget)
-            {
-                exit 0 #Success!
-            }
+            exit 0 #Success!
         }
         catch {
             Write-Error $_
@@ -481,6 +488,11 @@ AppendToUserScript "Push-Location C:\"
 
 if (!$repoCloned)
 {
+    # ensure the target directory doesn't exist
+    if (Test-Path -PathType Container $TargetRepoDirectory) {
+        Remove-Item -Recurse -Force $TargetRepoDirectory
+    }
+
     # make directory if it doesn't exist
     AppendToUserScript "if (!(Test-Path -PathType Container '$($Directory)')) {"
     AppendToUserScript "    New-Item -Path '$($Directory)' -ItemType Directory"
