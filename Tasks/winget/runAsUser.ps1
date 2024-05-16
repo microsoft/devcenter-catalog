@@ -18,8 +18,6 @@ Write-Host "Microsoft Dev Box - Customizations"
 Write-Host "----------------------------------"
 Write-Host "Setting up scheduled tasks..."
 
-Write-Host "Waiting on OneDrive initialization..."
-Start-Sleep -Seconds 120
 Remove-Item -Path "$($CustomizationScriptsDir)\$($LockFile)"
 
 Write-Host "Updating WinGet"

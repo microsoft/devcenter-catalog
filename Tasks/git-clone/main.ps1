@@ -328,7 +328,6 @@ if ($Pat) {
         # If the code reaches this point, we've successfully cloned the repository.
         Write-Host "Successfully cloned repository: $($RepositoryUrl) to directory: $($TargetRepoDirectory)"
         $repoCloned = $true
-        exit 0 #Success!
     }
     catch {
         Write-Error $_
@@ -401,7 +400,6 @@ if ($Pat) {
             # If the code reaches this point, we've successfully cloned the repository.
             Write-Host "Successfully cloned repository: $($RepositoryUrl) to directory: $($TargetRepoDirectory)"
             $repoCloned = $true
-            exit 0 #Success!
         }
         catch {
             Write-Error $_
@@ -443,7 +441,6 @@ if (!$repoCloned -and ($RepositoryUrl -match "github.com")) {
         # If the code reaches this point, we've successfully cloned the repository.
         Write-Host "Successfully cloned repository: $($RepositoryUrl) to directory: $($TargetRepoDirectory)"
         $repoCloned = $true
-        exit 0 #Success!
     }
     catch {
         Write-Error $_
@@ -510,7 +507,10 @@ if (!$repoCloned)
     AppendToUserScript "Pop-Location"
 }
 
-
+# Change the permissions of the directory where the repository was cloned
+# by running git config --global --add safe.directory <directory>
+AppendToUserScript "Write-Host 'git config --global --add safe.directory $($TargetRepoDirectory)'"
+AppendToUserScript "git config --global --add safe.directory '$($TargetRepoDirectory)'"
 
 AppendToUserScript "Pop-Location"
 
