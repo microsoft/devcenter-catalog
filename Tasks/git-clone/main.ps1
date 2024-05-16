@@ -472,20 +472,15 @@ function AppendToUserScript {
     Add-Content -Path "$($CustomizationScriptsDir)\$($RunAsUserScript)" -Value $Content
 }
 
-# Write intent to output stream
-AppendToUserScript "Write-Host 'Cloning repository: $($RepositoryUrl) to directory: $($TargetRepoDirectory)'"
-if ($Branch) {
-    AppendToUserScript "Write-Host 'Using branch: $($Branch)'"
-}
-
 # Work from C:\
 AppendToUserScript "Push-Location C:\"
 
 if (!$repoCloned)
 {
-    # ensure the target directory doesn't exist
-    if (Test-Path -PathType Container $TargetRepoDirectory) {
-        Remove-Item -Recurse -Force $TargetRepoDirectory
+    # Write intent to output stream
+    AppendToUserScript "Write-Host 'Cloning repository: $($RepositoryUrl) to directory: $($TargetRepoDirectory)'"
+    if ($Branch) {
+        AppendToUserScript "Write-Host 'Using branch: $($Branch)'"
     }
 
     # make directory if it doesn't exist
@@ -511,6 +506,7 @@ if (!$repoCloned)
 # by running git config --global --add safe.directory <directory>
 AppendToUserScript "Write-Host 'git config --global --add safe.directory $($TargetRepoDirectory)'"
 AppendToUserScript "git config --global --add safe.directory '$($TargetRepoDirectory)'"
+AppendToUserScript "git config --file 'C:/Program Files/Git/etc/gitconfig' --add safe.directory '$($TargetRepoDirectory)'"
 
 AppendToUserScript "Pop-Location"
 
