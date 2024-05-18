@@ -147,23 +147,25 @@ function InstallPS7 {
 function InstallWinGet {
     Write-Host "Installing powershell modules in scope: $PsInstallScope"
 
-    # Set PSGallery installation policy to trusted
-    Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
-
     # ensure NuGet provider is installed
-    if (!(Get-PackageProvider | Where-Object { $_.Name -eq "NuGet" -and $_.Version -gt "3.0.0.0" })) {
+    if (!(Get-PackageProvider | Where-Object { $_.Name -eq "NuGet" -and $_.Version -gt "2.8.5.201" })) {
         Write-Host "Installing NuGet provider"
-        Install-PackageProvider -Name "NuGet" -MinimumVersion "3.0.0.0" -Force -Scope $PsInstallScope
+        Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope $PsInstallScope
         Write-Host "Done Installing NuGet provider"
     }
     else {
         Write-Host "NuGet provider is already installed"
     }
 
+    # Set PSGallery installation policy to trusted
+    Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
+    pwsh.exe -MTA -Command "Set-PSRepository -Name PSGallery -InstallationPolicy Trusted"
+
     # check if the Microsoft.Winget.Client module is installed
     if (!(Get-Module -ListAvailable -Name Microsoft.Winget.Client)) {
         Write-Host "Installing Microsoft.Winget.Client"
         Install-Module Microsoft.WinGet.Client -Scope $PsInstallScope
+        pwsh.exe -MTA -Command "Install-Module Microsoft.WinGet.Client -Scope $PsInstallScope"
         Write-Host "Done Installing Microsoft.Winget.Client"
     }
     else {
@@ -235,6 +237,7 @@ function InstallWinGet {
 
     # Revert PSGallery installation policy to untrusted
     Set-PSRepository -Name "PSGallery" -InstallationPolicy Untrusted
+    pwsh.exe -MTA -Command "Set-PSRepository -Name PSGallery -InstallationPolicy Untrusted"
 }
 
 InstallPS7
