@@ -333,7 +333,12 @@ if ($Pat) {
 
         # Mark the directory as safe for git operations
         $TargetRepoDirectorySafe = $TargetRepoDirectory -replace '\\', '/'
-        git config --system --add safe.directory "$($TargetRepoDirectorySafe)"
+        if ($PsInstallScope -eq "CurrentUser") {
+            git config --global --add safe.directory "$($TargetRepoDirectorySafe)"
+        }
+        else {
+            git config --system --add safe.directory "$($TargetRepoDirectorySafe)"
+        }
 
         # If the code reaches this point, we've successfully cloned the repository.
         Write-Host "Successfully cloned repository: $($RepositoryUrl) to directory: $($TargetRepoDirectory)"
@@ -412,7 +417,12 @@ if ($Pat) {
 
             # Mark the directory as safe for git operations
             $TargetRepoDirectorySafe = $TargetRepoDirectory -replace '\\', '/'
-            git config --system --add safe.directory "$($TargetRepoDirectorySafe)"
+            if ($PsInstallScope -eq "CurrentUser") {
+                git config --global --add safe.directory "$($TargetRepoDirectorySafe)"
+            }
+            else {
+                git config --system --add safe.directory "$($TargetRepoDirectorySafe)"
+            }
 
             # If the code reaches this point, we've successfully cloned the repository.
             Write-Host "Successfully cloned repository: $($RepositoryUrl) to directory: $($TargetRepoDirectory)"
@@ -461,7 +471,12 @@ if (!$repoCloned -and ($RepositoryUrl -match "github.com")) {
 
         # Mark the directory as safe for git operations
         $TargetRepoDirectorySafe = $TargetRepoDirectory -replace '\\', '/'
-        git config --system --add safe.directory "$($TargetRepoDirectorySafe)"
+        if ($PsInstallScope -eq "CurrentUser") {
+            git config --global --add safe.directory "$($TargetRepoDirectorySafe)"
+        }
+        else {
+            git config --system --add safe.directory "$($TargetRepoDirectorySafe)"
+        }
 
         # If the code reaches this point, we've successfully cloned the repository.
         Write-Host "Successfully cloned repository: $($RepositoryUrl) to directory: $($TargetRepoDirectory)"
