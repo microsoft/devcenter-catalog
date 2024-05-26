@@ -312,10 +312,12 @@ if ($Pat) {
         if (Test-Path -PathType Container $TargetRepoDirectory) {
             Remove-Item -Recurse -Force $TargetRepoDirectory
         }
+
         if (!(Test-Path -PathType Container $TargetRepoDirectory)) {
             New-Item -Path $TargetRepoDirectory -ItemType Directory
         }
 
+        # Attempt to clone
         Push-Location $TargetRepoDirectory
         $b64pat = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("user:$Pat"))
         if ($Branch) {
@@ -328,6 +330,11 @@ if ($Pat) {
         if ($LASTEXITCODE -ne 0) {
             throw "git clone exited with code: $($LASTEXITCODE)"
         }
+
+        # Mark the directory as safe for git operations
+        $TargetRepoDirectorySafe = $TargetRepoDirectory -replace '\\', '/'
+        git config --system --add safe.directory "$($TargetRepoDirectorySafe)"
+
         # If the code reaches this point, we've successfully cloned the repository.
         Write-Host "Successfully cloned repository: $($RepositoryUrl) to directory: $($TargetRepoDirectory)"
         $repoCloned = $true
@@ -385,10 +392,12 @@ if ($Pat) {
             if (Test-Path -PathType Container $TargetRepoDirectory) {
                 Remove-Item -Recurse -Force $TargetRepoDirectory
             }
+
             if (!(Test-Path -PathType Container $TargetRepoDirectory)) {
                 New-Item -Path $TargetRepoDirectory -ItemType Directory
             }
 
+            # Attempt to clone
             Push-Location $TargetRepoDirectory
             if ($Branch) {
                 git clone -b $Branch $NormalizedRepositoryUrl . 3>&1 2>&1
@@ -400,6 +409,11 @@ if ($Pat) {
             if ($LASTEXITCODE -ne 0) {
                 throw "git clone exited with code: $($LASTEXITCODE)"
             }
+
+            # Mark the directory as safe for git operations
+            $TargetRepoDirectorySafe = $TargetRepoDirectory -replace '\\', '/'
+            git config --system --add safe.directory "$($TargetRepoDirectorySafe)"
+
             # If the code reaches this point, we've successfully cloned the repository.
             Write-Host "Successfully cloned repository: $($RepositoryUrl) to directory: $($TargetRepoDirectory)"
             $repoCloned = $true
@@ -427,10 +441,12 @@ if (!$repoCloned -and ($RepositoryUrl -match "github.com")) {
         if (Test-Path -PathType Container $TargetRepoDirectory) {
             Remove-Item -Recurse -Force $TargetRepoDirectory
         }
+
         if (!(Test-Path -PathType Container $TargetRepoDirectory)) {
             New-Item -Path $TargetRepoDirectory -ItemType Directory
         }
 
+        # Attempt to clone
         Push-Location $TargetRepoDirectory
         if ($Branch) {
             git clone -b $Branch $RepositoryUrl . 3>&1 2>&1
@@ -438,9 +454,15 @@ if (!$repoCloned -and ($RepositoryUrl -match "github.com")) {
         else {
             git clone $RepositoryUrl . 3>&1 2>&1
         }
+
         if ($LASTEXITCODE -ne 0) {
             throw "git clone exited with code: $($LASTEXITCODE)"
         }
+
+        # Mark the directory as safe for git operations
+        $TargetRepoDirectorySafe = $TargetRepoDirectory -replace '\\', '/'
+        git config --system --add safe.directory "$($TargetRepoDirectorySafe)"
+
         # If the code reaches this point, we've successfully cloned the repository.
         Write-Host "Successfully cloned repository: $($RepositoryUrl) to directory: $($TargetRepoDirectory)"
         $repoCloned = $true
@@ -452,6 +474,12 @@ if (!$repoCloned -and ($RepositoryUrl -match "github.com")) {
     finally {
         Pop-Location
     }
+}
+
+
+if ($repoCloned)
+{
+    exit 0 #Success!
 }
 
 # If the code reaches this point, we failed to clone the repository during provisioning time or
@@ -478,38 +506,34 @@ function AppendToUserScript {
 # Work from C:\
 AppendToUserScript "Push-Location C:\"
 
-if (!$repoCloned)
-{
-    # Write intent to output stream
-    AppendToUserScript "Write-Host 'Cloning repository: $($RepositoryUrl) to directory: $($TargetRepoDirectory)'"
-    if ($Branch) {
-        AppendToUserScript "Write-Host 'Using branch: $($Branch)'"
-    }
-
-    # make directory if it doesn't exist
-    AppendToUserScript "if (Test-Path -PathType Container '$($TargetRepoDirectory)') {"
-    AppendToUserScript "    Remove-Item -Recurse -Force '$($TargetRepoDirectory)'"
-    AppendToUserScript "}"
-    AppendToUserScript "if (!(Test-Path -PathType Container '$($TargetRepoDirectory)')) {"
-    AppendToUserScript "    New-Item -Path '$($TargetRepoDirectory)' -ItemType Directory"
-    AppendToUserScript "}"
-
-    # Work from specified directory, clone the repo and change branch if needed
-    AppendToUserScript "Push-Location $($TargetRepoDirectory)"
-    if ($Branch) {
-        AppendToUserScript "git clone -b $($Branch) $($RepositoryUrl) ."
-    }
-    else {
-        AppendToUserScript "git clone $($RepositoryUrl) ."
-    }
-    AppendToUserScript "Pop-Location"
+# Write intent to output stream
+AppendToUserScript "Write-Host 'Cloning repository: $($RepositoryUrl) to directory: $($TargetRepoDirectory)'"
+if ($Branch) {
+    AppendToUserScript "Write-Host 'Using branch: $($Branch)'"
 }
 
-# Change the permissions of the directory where the repository was cloned
-# by running git config --global --add safe.directory <directory>
-AppendToUserScript "Write-Host 'git config --global --add safe.directory $($TargetRepoDirectory)'"
-AppendToUserScript "git config --global --add safe.directory '$($TargetRepoDirectory)'"
-AppendToUserScript "git config --file 'C:/Program Files/Git/etc/gitconfig' --add safe.directory '$($TargetRepoDirectory)'"
+# make directory if it doesn't exist
+AppendToUserScript "if (Test-Path -PathType Container '$($TargetRepoDirectory)') {"
+AppendToUserScript "    Remove-Item -Recurse -Force '$($TargetRepoDirectory)'"
+AppendToUserScript "}"
+AppendToUserScript "if (!(Test-Path -PathType Container '$($TargetRepoDirectory)')) {"
+AppendToUserScript "    New-Item -Path '$($TargetRepoDirectory)' -ItemType Directory"
+AppendToUserScript "}"
+
+# Attempt to clone the repository
+AppendToUserScript "Push-Location $($TargetRepoDirectory)"
+if ($Branch) {
+    AppendToUserScript "git clone -b $($Branch) $($RepositoryUrl) ."
+}
+else {
+    AppendToUserScript "git clone $($RepositoryUrl) ."
+}
+
+AppendToUserScript "Pop-Location"
+
+# Mark the directory as safe for git operations
+$TargetRepoDirectorySafe = $TargetRepoDirectory -replace '\\', '/'
+AppendToUserScript "git config --global --add safe.directory '$($TargetRepoDirectorySafe)'"
 
 AppendToUserScript "Pop-Location"
 
