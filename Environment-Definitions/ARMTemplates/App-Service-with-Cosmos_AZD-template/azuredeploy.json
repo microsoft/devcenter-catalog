@@ -4,41 +4,30 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.21.1.54444",
-      "templateHash": "10809287839753264304"
+      "version": "0.27.1.19265",
+      "templateHash": "2535963542860288603"
     }
   },
   "parameters": {
     "repoUrl": {
       "type": "string",
-      "defaultValue":"https://github.com/azure-samples/todo-java-mongo",
+      "defaultValue": "https://github.com/azure-samples/todo-java-mongo",
       "allowedValues": [
-          "https://github.com/azure-samples/todo-java-mongo",
-          "https://github.com/azure-samples/todo-nodejs-mongo",
-          "https://github.com/azure-samples/todo-python-mongo"
+        "https://github.com/azure-samples/todo-java-mongo",
+        "https://github.com/azure-samples/todo-nodejs-mongo",
+        "https://github.com/azure-samples/todo-python-mongo"
       ],
       "metadata": {
         "description": "URL of the GitHub repository containing the application code"
       }
     },
-    "runtimeType": {
-      "type": "string",
-      "allowedValues": [
-        "python",
-        "nodejs",
-        "java"
-    ],
-      "metadata": {
-        "description": "Runtime Type of the App Service runtime,eg python, nodejs or java."
-      }
-    },
     "location": {
       "type": "string",
       "defaultValue": "[resourceGroup().location]",
+      "minLength": 1,
       "metadata": {
         "description": "Primary location for all resources"
-      },
-      "minLength": 1
+      }
     },
     "apiServiceName": {
       "type": "string",
@@ -80,11 +69,29 @@
       "type": "string",
       "defaultValue": ""
     },
+    "runtimeType": {
+      "type": "string",
+      "allowedValues": [
+        "python",
+        "nodejs",
+        "java"
+      ],
+      "metadata": {
+        "description": "Runtime Type of the App Service runtime,eg python, nodejs or java."
+      }
+    },
     "useAPIM": {
       "type": "bool",
       "defaultValue": false,
       "metadata": {
         "description": "Flag to use Azure API Management to mediate the calls between the Web frontend and the backend API"
+      }
+    },
+    "apimSku": {
+      "type": "string",
+      "defaultValue": "Consumption",
+      "metadata": {
+        "description": "API Management SKU to use if APIM is enabled"
       }
     },
     "principalId": {
@@ -99,7 +106,7 @@
     "$fxv#0": {
       "analysisServicesServers": "as",
       "apiManagementService": "apim-",
-      "appConfigurationConfigurationStores": "appcs-",
+      "appConfigurationStores": "appcs-",
       "appManagedEnvironments": "cae-",
       "appContainerApps": "ca-",
       "authorizationPolicyDefinitions": "policy-",
@@ -153,6 +160,7 @@
       "kubernetesConnectedClusters": "arck",
       "kustoClusters": "dec",
       "kustoClustersDatabases": "dedb",
+      "loadTesting": "lt-",
       "logicIntegrationAccounts": "ia-",
       "logicWorkflows": "logic-",
       "machineLearningServicesWorkspaces": "mlw-",
@@ -232,12 +240,13 @@
       "webStaticSites": "stapp-"
     },
     "abbrs": "[variables('$fxv#0')]",
-    "resourceToken": "[toLower(uniqueString(subscription().id, resourceGroup().name , parameters('location')))]",
+    "resourceToken": "[toLower(uniqueString(subscription().id, resourceGroup().name, parameters('location')))]",
     "tags": {
-      "azd-env-name": "[parameters('runtimeType')]"
+      "azd-env-name": "[resourceGroup().name]"
     },
-    "runtimeName":"[if(equals(parameters('runtimeType'), 'java'), 'java', if(equals(parameters('runtimeType'), 'python'), 'python','node'))]",
-    "runtimeVersion":"[if(equals(parameters('runtimeType'), 'java'), '17-java17', if(equals(parameters('runtimeType'), 'python'), '3.10','18-lts'))]"
+    "apiRuntimeName": "[if(equals(parameters('runtimeType'), 'nodejs'), 'node', parameters('runtimeType'))]",
+    "apiRuntimeVersion": "[if(equals(parameters('runtimeType'), 'java'), '17-java17', if(equals(parameters('runtimeType'), 'python'), '3.10', '20-lts'))]",
+    "apiCommandLine": "[if(equals(parameters('runtimeType'), 'python'), 'gunicorn --workers 4 --threads 2 --timeout 60 --access-logfile \"-\" --error-logfile \"-\" --bind=0.0.0.0:8000 -k uvicorn.workers.UvicornWorker todo.app:app', '')]"
   },
   "resources": [
     {
@@ -270,8 +279,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.21.1.54444",
-              "templateHash": "17255664220697257765"
+              "version": "0.27.1.19265",
+              "templateHash": "12598804469399136067"
             }
           },
           "parameters": {
@@ -292,7 +301,7 @@
             },
             "appCommandLine": {
               "type": "string",
-              "defaultValue": "./entrypoint.sh -o ./env-config.js && pm2 serve /home/site/wwwroot --no-daemon --spa"
+              "defaultValue": "pm2 serve /home/site/wwwroot --no-daemon --spa"
             },
             "applicationInsightsName": {
               "type": "string",
@@ -332,7 +341,7 @@
                     "value": "node"
                   },
                   "runtimeVersion": {
-                    "value": "18-lts"
+                    "value": "20-lts"
                   },
                   "tags": {
                     "value": "[union(parameters('tags'), createObject('azd-service-name', parameters('serviceName')))]"
@@ -344,8 +353,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.21.1.54444",
-                      "templateHash": "3134122572814386292"
+                      "version": "0.27.1.19265",
+                      "templateHash": "13796366462136909975"
                     },
                     "description": "Creates an Azure App Service in an existing Azure App Service plan."
                   },
@@ -459,34 +468,6 @@
                   },
                   "resources": [
                     {
-                      "type": "Microsoft.Web/sites/config",
-                      "apiVersion": "2022-03-01",
-                      "name": "[format('{0}/{1}', parameters('name'), 'logs')]",
-                      "properties": {
-                        "applicationLogs": {
-                          "fileSystem": {
-                            "level": "Verbose"
-                          }
-                        },
-                        "detailedErrorMessages": {
-                          "enabled": true
-                        },
-                        "failedRequestsTracing": {
-                          "enabled": true
-                        },
-                        "httpLogs": {
-                          "fileSystem": {
-                            "enabled": true,
-                            "retentionInDays": 1,
-                            "retentionInMb": 35
-                          }
-                        }
-                      },
-                      "dependsOn": [
-                        "[resourceId('Microsoft.Web/sites', parameters('name'))]"
-                      ]
-                    },
-                    {
                       "type": "Microsoft.Web/sites/basicPublishingCredentialsPolicies",
                       "apiVersion": "2022-03-01",
                       "name": "[format('{0}/{1}', parameters('name'), 'ftp')]",
@@ -540,7 +521,35 @@
                       }
                     },
                     {
-                      "condition": "[not(empty(parameters('appSettings')))]",
+                      "type": "Microsoft.Web/sites/config",
+                      "apiVersion": "2022-03-01",
+                      "name": "[format('{0}/{1}', parameters('name'), 'logs')]",
+                      "properties": {
+                        "applicationLogs": {
+                          "fileSystem": {
+                            "level": "Verbose"
+                          }
+                        },
+                        "detailedErrorMessages": {
+                          "enabled": true
+                        },
+                        "failedRequestsTracing": {
+                          "enabled": true
+                        },
+                        "httpLogs": {
+                          "fileSystem": {
+                            "enabled": true,
+                            "retentionInDays": 1,
+                            "retentionInMb": 35
+                          }
+                        }
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Web/sites', parameters('name'))]",
+                        "[resourceId('Microsoft.Resources/deployments', format('{0}-appSettings', parameters('name')))]"
+                      ]
+                    },
+                    {
                       "type": "Microsoft.Resources/deployments",
                       "apiVersion": "2022-09-01",
                       "name": "[format('{0}-appSettings', parameters('name'))]",
@@ -563,8 +572,8 @@
                           "metadata": {
                             "_generator": {
                               "name": "bicep",
-                              "version": "0.21.1.54444",
-                              "templateHash": "12385797959791820601"
+                              "version": "0.27.1.19265",
+                              "templateHash": "9730065891606131364"
                             },
                             "description": "Updates app settings for an Azure App Service."
                           },
@@ -632,77 +641,16 @@
         }
       },
       "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'appserviceplan')]",
         "[resourceId('Microsoft.Resources/deployments', 'monitoring')]"
       ]
     },
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
-      "name": "web-appsettings",
-            "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "name": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments','web'), '2022-09-01').outputs.SERVICE_WEB_NAME.value]"
-          },
-          "appSettings": {
-            "value": {
-              "API_BASE_URL": "[if(parameters('useAPIM'), reference(resourceId('Microsoft.Resources/deployments', 'apim-api-deployment'), '2022-09-01').outputs.SERVICE_API_URI.value, reference(resourceId('Microsoft.Resources/deployments', 'api'), '2022-09-01').outputs.SERVICE_API_URI.value)]",
-              "APPLICATIONINSIGHTS_CONNECTION_STRING": "[reference(resourceId('Microsoft.Resources/deployments', 'monitoring'), '2022-09-01').outputs.applicationInsightsConnectionString.value]"
-            }
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.21.1.54444",
-              "templateHash": "12385797959791820601"
-            },
-            "description": "Updates app settings for an Azure App Service."
-          },
-          "parameters": {
-            "name": {
-              "type": "string",
-              "metadata": {
-                "description": "The name of the app service resource within the current resource group scope"
-              }
-            },
-            "appSettings": {
-              "type": "secureObject",
-              "metadata": {
-                "description": "The app settings to be applied to the app service"
-              }
-            }
-          },
-          "resources": [
-            {
-              "type": "Microsoft.Web/sites/config",
-              "apiVersion": "2022-03-01",
-              "name": "[format('{0}/{1}', parameters('name'), 'appsettings')]",
-              "properties": "[parameters('appSettings')]"
-            }
-          ]
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'api')]",
-        "[resourceId('Microsoft.Resources/deployments', 'apim-api-deployment')]",
-        "[resourceId('Microsoft.Resources/deployments', 'monitoring')]",
-        "[resourceId('Microsoft.Resources/deployments', 'web')]"
-      ]
-    },
-    {
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
       "name": "api",
-          "properties": {
-          "expressionEvaluationOptions": {
+      "properties": {
+        "expressionEvaluationOptions": {
           "scope": "inner"
         },
         "mode": "Incremental",
@@ -729,22 +677,15 @@
             ]
           },
           "runtimeName": {
-            "value": "[variables('runtimeName')]"
+            "value": "[variables('apiRuntimeName')]"
           },
           "runtimeVersion": {
-            "value": "[variables('runtimeVersion')]"
+            "value": "[variables('apiRuntimeVersion')]"
           },
-          "appSettings": {
-            "value": {
-              "AZURE_COSMOS_CONNECTION_STRING_KEY": "[reference(resourceId('Microsoft.Resources/deployments', 'cosmos'), '2022-09-01').outputs.connectionStringKey.value]",
-              "AZURE_COSMOS_DATABASE_NAME": "[reference(resourceId('Microsoft.Resources/deployments', 'cosmos'), '2022-09-01').outputs.databaseName.value]",
-              "AZURE_COSMOS_ENDPOINT": "[reference(resourceId('Microsoft.Resources/deployments', 'cosmos'), '2022-09-01').outputs.endpoint.value]",
-              "API_ALLOW_ORIGINS": "[reference(resourceId('Microsoft.Resources/deployments', 'web'), '2022-09-01').outputs.SERVICE_WEB_URI.value]"
-            }
+          "appCommandLine": {
+            "value": "[variables('apiCommandLine')]"
           },
-          "appcommandline": {
-            "value": "[if(equals(variables('runtimeName'), 'python'), 'gunicorn --workers 4 --threads 2 --timeout 60 --access-logfile \"-\" --error-logfile \"-\" --bind=0.0.0.0:8000 -k uvicorn.workers.UvicornWorker todo.app:app', '')]"
-          }
+          "appSettings": "[if(equals(parameters('runtimeType'), 'java'), createObject('value', union(createObject('AZURE_COSMOS_CONNECTION_STRING_KEY', reference(resourceId('Microsoft.Resources/deployments', 'cosmos'), '2022-09-01').outputs.connectionStringKey.value, 'AZURE_COSMOS_DATABASE_NAME', reference(resourceId('Microsoft.Resources/deployments', 'cosmos'), '2022-09-01').outputs.databaseName.value, 'AZURE_COSMOS_ENDPOINT', reference(resourceId('Microsoft.Resources/deployments', 'cosmos'), '2022-09-01').outputs.endpoint.value, 'API_ALLOW_ORIGINS', reference(resourceId('Microsoft.Resources/deployments', 'web'), '2022-09-01').outputs.SERVICE_WEB_URI.value), createObject('JAVA_OPTS', '-Djdk.attach.allowAttachSelf=true'))), createObject('value', createObject('AZURE_COSMOS_CONNECTION_STRING_KEY', reference(resourceId('Microsoft.Resources/deployments', 'cosmos'), '2022-09-01').outputs.connectionStringKey.value, 'AZURE_COSMOS_DATABASE_NAME', reference(resourceId('Microsoft.Resources/deployments', 'cosmos'), '2022-09-01').outputs.databaseName.value, 'AZURE_COSMOS_ENDPOINT', reference(resourceId('Microsoft.Resources/deployments', 'cosmos'), '2022-09-01').outputs.endpoint.value, 'API_ALLOW_ORIGINS', reference(resourceId('Microsoft.Resources/deployments', 'web'), '2022-09-01').outputs.SERVICE_WEB_URI.value)))]"
         },
         "template": {
           "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
@@ -752,8 +693,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.21.1.54444",
-              "templateHash": "17889685883996917557"
+              "version": "0.27.1.19265",
+              "templateHash": "2535214801870582600"
             }
           },
           "parameters": {
@@ -795,23 +736,13 @@
               "defaultValue": "api"
             },
             "runtimeName": {
-              "type": "string"
+              "type": "string",
+              "defaultValue": "node"
             },
             "runtimeVersion": {
-              "type": "string"
-            },
-            "javaRuntimeOptions": {
-              "type": "array",
-              "defaultValue": [],
-              "metadata": {
-                "description": "JVM runtime options. Use this instead of defining JAVA_OPTS manually on appSettings."
-              }
+              "type": "string",
+              "defaultValue": "20-lts"
             }
-          },
-          "variables": {
-            "defaultJavaRuntimeOptions": [
-              "-Djdk.attach.allowAttachSelf=true"
-            ]
           },
           "resources": [
             {
@@ -867,8 +798,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.21.1.54444",
-                      "templateHash": "3134122572814386292"
+                      "version": "0.27.1.19265",
+                      "templateHash": "13796366462136909975"
                     },
                     "description": "Creates an Azure App Service in an existing Azure App Service plan."
                   },
@@ -982,34 +913,6 @@
                   },
                   "resources": [
                     {
-                      "type": "Microsoft.Web/sites/config",
-                      "apiVersion": "2022-03-01",
-                      "name": "[format('{0}/{1}', parameters('name'), 'logs')]",
-                      "properties": {
-                        "applicationLogs": {
-                          "fileSystem": {
-                            "level": "Verbose"
-                          }
-                        },
-                        "detailedErrorMessages": {
-                          "enabled": true
-                        },
-                        "failedRequestsTracing": {
-                          "enabled": true
-                        },
-                        "httpLogs": {
-                          "fileSystem": {
-                            "enabled": true,
-                            "retentionInDays": 1,
-                            "retentionInMb": 35
-                          }
-                        }
-                      },
-                      "dependsOn": [
-                        "[resourceId('Microsoft.Web/sites', parameters('name'))]"
-                      ]
-                    },
-                    {
                       "type": "Microsoft.Web/sites/basicPublishingCredentialsPolicies",
                       "apiVersion": "2022-03-01",
                       "name": "[format('{0}/{1}', parameters('name'), 'ftp')]",
@@ -1063,7 +966,35 @@
                       }
                     },
                     {
-                      "condition": "[not(empty(parameters('appSettings')))]",
+                      "type": "Microsoft.Web/sites/config",
+                      "apiVersion": "2022-03-01",
+                      "name": "[format('{0}/{1}', parameters('name'), 'logs')]",
+                      "properties": {
+                        "applicationLogs": {
+                          "fileSystem": {
+                            "level": "Verbose"
+                          }
+                        },
+                        "detailedErrorMessages": {
+                          "enabled": true
+                        },
+                        "failedRequestsTracing": {
+                          "enabled": true
+                        },
+                        "httpLogs": {
+                          "fileSystem": {
+                            "enabled": true,
+                            "retentionInDays": 1,
+                            "retentionInMb": 35
+                          }
+                        }
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Web/sites', parameters('name'))]",
+                        "[resourceId('Microsoft.Resources/deployments', format('{0}-appSettings', parameters('name')))]"
+                      ]
+                    },
+                    {
                       "type": "Microsoft.Resources/deployments",
                       "apiVersion": "2022-09-01",
                       "name": "[format('{0}-appSettings', parameters('name'))]",
@@ -1086,8 +1017,8 @@
                           "metadata": {
                             "_generator": {
                               "name": "bicep",
-                              "version": "0.21.1.54444",
-                              "templateHash": "12385797959791820601"
+                              "version": "0.27.1.19265",
+                              "templateHash": "9730065891606131364"
                             },
                             "description": "Updates app settings for an Azure App Service."
                           },
@@ -1166,7 +1097,7 @@
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "api-keyvault-access",
-            "properties": {
+      "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
         },
@@ -1185,8 +1116,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.21.1.54444",
-              "templateHash": "7211460666347195796"
+              "version": "0.27.1.19265",
+              "templateHash": "6278079210023281106"
             },
             "description": "Assigns an Azure Key Vault access policy."
           },
@@ -1238,7 +1169,7 @@
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "cosmos",
-            "properties": {
+      "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
         },
@@ -1264,8 +1195,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.21.1.54444",
-              "templateHash": "16631937903417936258"
+              "version": "0.27.1.19265",
+              "templateHash": "922358179802906048"
             }
           },
           "parameters": {
@@ -1345,8 +1276,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.21.1.54444",
-                      "templateHash": "17180378298689662014"
+                      "version": "0.27.1.19265",
+                      "templateHash": "11256531440558691624"
                     },
                     "description": "Creates an Azure Cosmos DB for MongoDB account with a database."
                   },
@@ -1453,8 +1384,8 @@
                           "metadata": {
                             "_generator": {
                               "name": "bicep",
-                              "version": "0.21.1.54444",
-                              "templateHash": "11031894815865564141"
+                              "version": "0.27.1.19265",
+                              "templateHash": "3597031261101386438"
                             },
                             "description": "Creates an Azure Cosmos DB for MongoDB account."
                           },
@@ -1514,8 +1445,8 @@
                                   "metadata": {
                                     "_generator": {
                                       "name": "bicep",
-                                      "version": "0.21.1.54444",
-                                      "templateHash": "5954645402846745545"
+                                      "version": "0.27.1.19265",
+                                      "templateHash": "5084371553872687363"
                                     },
                                     "description": "Creates an Azure Cosmos DB account."
                                   },
@@ -1569,7 +1500,7 @@
                                         "databaseAccountOfferType": "Standard",
                                         "enableAutomaticFailover": false,
                                         "enableMultipleWriteLocations": false,
-                                        "apiProperties": "[if(equals(parameters('kind'), 'MongoDB'), createObject('serverVersion', '4.0'), createObject())]",
+                                        "apiProperties": "[if(equals(parameters('kind'), 'MongoDB'), createObject('serverVersion', '4.2'), createObject())]",
                                         "capabilities": [
                                           {
                                             "name": "EnableServerless"
@@ -1671,7 +1602,7 @@
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "appserviceplan",
-            "properties": {
+      "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
         },
@@ -1686,7 +1617,7 @@
           },
           "sku": {
             "value": {
-              "name": "B1"
+              "name": "B3"
             }
           }
         },
@@ -1696,8 +1627,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.21.1.54444",
-              "templateHash": "17869526305870464556"
+              "version": "0.27.1.19265",
+              "templateHash": "3882056790487836425"
             },
             "description": "Creates an Azure App Service plan."
           },
@@ -1756,7 +1687,7 @@
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "keyvault",
-            "properties": {
+      "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
         },
@@ -1779,8 +1710,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.21.1.54444",
-              "templateHash": "2400067255859456248"
+              "version": "0.27.1.19265",
+              "templateHash": "5673432785959935770"
             },
             "description": "Creates an Azure Key Vault."
           },
@@ -1823,6 +1754,10 @@
               "type": "string",
               "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('name')), '2022-07-01').vaultUri]"
             },
+            "id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]"
+            },
             "name": {
               "type": "string",
               "value": "[parameters('name')]"
@@ -1835,7 +1770,7 @@
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "monitoring",
-            "properties": {
+      "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
         },
@@ -1857,8 +1792,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.21.1.54444",
-              "templateHash": "2414076572823487558"
+              "version": "0.27.1.19265",
+              "templateHash": "3398828964846399267"
             },
             "description": "Creates an Application Insights instance and a Log Analytics workspace."
           },
@@ -1870,7 +1805,8 @@
               "type": "string"
             },
             "applicationInsightsDashboardName": {
-              "type": "string"
+              "type": "string",
+              "defaultValue": ""
             },
             "location": {
               "type": "string",
@@ -1879,10 +1815,6 @@
             "tags": {
               "type": "object",
               "defaultValue": {}
-            },
-            "includeDashboard": {
-              "type": "bool",
-              "defaultValue": true
             }
           },
           "resources": [
@@ -1912,8 +1844,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.21.1.54444",
-                      "templateHash": "10193120495091804809"
+                      "version": "0.27.1.19265",
+                      "templateHash": "2707024492396982954"
                     },
                     "description": "Creates a Log Analytics workspace."
                   },
@@ -1983,9 +1915,6 @@
                   "dashboardName": {
                     "value": "[parameters('applicationInsightsDashboardName')]"
                   },
-                  "includeDashboard": {
-                    "value": "[parameters('includeDashboard')]"
-                  },
                   "logAnalyticsWorkspaceId": {
                     "value": "[reference(resourceId('Microsoft.Resources/deployments', 'loganalytics'), '2022-09-01').outputs.id.value]"
                   }
@@ -1996,8 +1925,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.21.1.54444",
-                      "templateHash": "2044604789989991581"
+                      "version": "0.27.1.19265",
+                      "templateHash": "17272733589908622183"
                     },
                     "description": "Creates an Application Insights instance based on an existing Log Analytics workspace."
                   },
@@ -2006,7 +1935,8 @@
                       "type": "string"
                     },
                     "dashboardName": {
-                      "type": "string"
+                      "type": "string",
+                      "defaultValue": ""
                     },
                     "location": {
                       "type": "string",
@@ -2015,10 +1945,6 @@
                     "tags": {
                       "type": "object",
                       "defaultValue": {}
-                    },
-                    "includeDashboard": {
-                      "type": "bool",
-                      "defaultValue": true
                     },
                     "logAnalyticsWorkspaceId": {
                       "type": "string"
@@ -2038,7 +1964,7 @@
                       }
                     },
                     {
-                      "condition": "[parameters('includeDashboard')]",
+                      "condition": "[not(empty(parameters('dashboardName')))]",
                       "type": "Microsoft.Resources/deployments",
                       "apiVersion": "2022-09-01",
                       "name": "application-insights-dashboard",
@@ -2064,8 +1990,8 @@
                           "metadata": {
                             "_generator": {
                               "name": "bicep",
-                              "version": "0.21.1.54444",
-                              "templateHash": "13286902661935936101"
+                              "version": "0.27.1.19265",
+                              "templateHash": "1759216242890853910"
                             },
                             "description": "Creates a dashboard for an Application Insights instance."
                           },
@@ -3306,6 +3232,10 @@
                       "type": "string",
                       "value": "[reference(resourceId('Microsoft.Insights/components', parameters('name')), '2020-02-02').ConnectionString]"
                     },
+                    "id": {
+                      "type": "string",
+                      "value": "[resourceId('Microsoft.Insights/components', parameters('name'))]"
+                    },
                     "instrumentationKey": {
                       "type": "string",
                       "value": "[reference(resourceId('Microsoft.Insights/components', parameters('name')), '2020-02-02').InstrumentationKey]"
@@ -3326,6 +3256,10 @@
             "applicationInsightsConnectionString": {
               "type": "string",
               "value": "[reference(resourceId('Microsoft.Resources/deployments', 'applicationinsights'), '2022-09-01').outputs.connectionString.value]"
+            },
+            "applicationInsightsId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Resources/deployments', 'applicationinsights'), '2022-09-01').outputs.id.value]"
             },
             "applicationInsightsInstrumentationKey": {
               "type": "string",
@@ -3352,13 +3286,16 @@
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "apim-deployment",
-            "properties": {
+      "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
         },
         "mode": "Incremental",
         "parameters": {
           "name": "[if(not(empty(parameters('apimServiceName'))), createObject('value', parameters('apimServiceName')), createObject('value', format('{0}{1}', variables('abbrs').apiManagementService, variables('resourceToken'))))]",
+          "sku": {
+            "value": "[parameters('apimSku')]"
+          },
           "location": {
             "value": "[parameters('location')]"
           },
@@ -3375,8 +3312,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.21.1.54444",
-              "templateHash": "8375777218735620263"
+              "version": "0.27.1.19265",
+              "templateHash": "16692274638994423150"
             },
             "description": "Creates an Azure API Management instance."
           },
@@ -3493,7 +3430,7 @@
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "apim-api-deployment",
-            "properties": {
+      "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
         },
@@ -3528,8 +3465,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.21.1.54444",
-              "templateHash": "11715358379047803118"
+              "version": "0.27.1.19265",
+              "templateHash": "10242874607688237506"
             }
           },
           "parameters": {
