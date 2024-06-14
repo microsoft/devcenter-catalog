@@ -183,8 +183,8 @@ function InstallWinGet {
     }
 
     if ($PsInstallScope -eq "CurrentUser") {
-        $msUiXamlPackage = Get-AppxPackage -Name "Microsoft.UI.Xaml.2.8"
-        if (!(msUiXamlPackage) -or ($msUiXamlPackage.Version -lt "8.2310.30001.0")) {
+        $msUiXamlPackage = Get-AppxPackage -Name "Microsoft.UI.Xaml.2.8" | Where-Object { $_.Version -ge "8.2310.30001.0" }
+        if (!($msUiXamlPackage)) {
             # instal Microsoft.UI.Xaml
             try {
                 Write-Host "Installing Microsoft.UI.Xaml"
