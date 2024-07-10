@@ -77,7 +77,7 @@ function Install-Package
     }
 
     if ($Switches){
-        $expression = "$expression --params ''$Switches''"
+        $expression = "$expression --params ""'$Switches'"" "
     }
 
     $expression = "$expression -y -f --acceptlicense --no-progress --stoponfirstfailure"
