@@ -1,10 +1,10 @@
-# This is a Chocolatey package installation task for Dev Box.
 
-$schema: 1.0
+# This is a Chocolatey package installation task for Dev Box.
+$schema: "1.0"
 name: choco
 description: Installs a Chocolatey package.
 author: Microsoft Corporation
-command: "./Choco.ps1 -Package {{package}} -Version {{version}} -IgnoreChecksums {{ignoreChecksums}}"
+command: "./Choco.ps1 -Package {{package}} -Version {{version}} -Switches {{switches}} -IgnoreChecksums {{ignoreChecksums}}"
 parameters:
   package:
     default: ""
@@ -20,6 +20,11 @@ parameters:
     type: string
     required: false
     description: The version of the Chocolatey package to install.
+  switches:
+    default: ""
+    type: string
+    required: false
+    description: Additional params required for the package to install.  
   ignoreChecksums:
     default: false
     type: boolean
@@ -33,6 +38,11 @@ documentation:
       parameters:
         package: oraclejdk
         version: 17.0.2
+    - name: choco
+      description: install azure functions core tools 
+      parameters:
+        package: azure-functions-core-tools
+        switches: /x64
     - name: choco
       description: install notepad++
       parameters:
