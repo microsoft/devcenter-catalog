@@ -5,7 +5,10 @@ param(
 
     [Parameter()]
     [string] $Version,
- 
+
+    [Parameter()]
+    [string] $Switches,
+  
     [Parameter()]
     [string] $IgnoreChecksums
 )
@@ -63,6 +66,7 @@ function Install-Package
         [string] $ChocoExePath,
         [string] $Package,
         [string] $Version,
+        [string] $Switches,        
         [string] $IgnoreChecksums
     )
 
@@ -70,6 +74,10 @@ function Install-Package
     
     if ($Version){
         $expression = "$expression --version $Version"
+    }
+
+    if ($Switches){
+        $expression = "$expression --params ""'$Switches'"" "
     }
 
     $expression = "$expression -y -f --acceptlicense --no-progress --stoponfirstfailure"
@@ -137,6 +145,7 @@ Write-Host 'Ensuring latest Chocolatey version is installed.'
 Ensure-Chocolatey -ChocoExePath "$Choco"
 
 Write-Host "Preparing to install Chocolatey package: $Package."
-Install-Package -ChocoExePath "$Choco" -Package $Package -Version $Version -IgnoreChecksums $IgnoreChecksums
+Write-Host "Command: $Choco -Package $Package -Version $Version -Switches $Switches -IgnoreChecksums $IgnoreChecksums" 
+Install-Package -ChocoExePath "$Choco" -Package $Package -Version $Version -Switches $Switches -IgnoreChecksums $IgnoreChecksums
 
 Write-Host "`nThe artifact was applied successfully.`n"
