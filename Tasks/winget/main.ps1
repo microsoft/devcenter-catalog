@@ -350,8 +350,8 @@ else {
             $versionFlag = "-Version '$($Version)'"
         }
 
-        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe $($mtaFlag) -Command `"Install-WinGetPackage -Id '$($Package)' $($versionFlag) | ConvertTo-Json -Depth 10 > $($tempOutFile)`""}
-        $process = Get-Process -Id $processCreation.ProcessId
+        $process = Start-Process -FilePath "C:\Program Files\PowerShell\7\pwsh.exe" -ArgumentList "$($mtaFlag) -Command `"Install-WinGetPackage -Id '$($Package)' $($versionFlag) -Source winget | ConvertTo-Json -Depth 10 > $($tempOutFile)`"" -PassThru
+        Write-Host "Process Id: $($process.Id)"
         $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
         $process.WaitForExit()
         $installExitCode = $process.ExitCode
@@ -377,11 +377,12 @@ else {
     elseif ($ConfigurationFile) {
         Write-Host "Running installation of configuration file: $($ConfigurationFile)"
 
-        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe $($mtaFlag) -Command `"Get-WinGetConfiguration -File '$($ConfigurationFile)' | Invoke-WinGetConfiguration -AcceptConfigurationAgreements | Select-Object -ExpandProperty UnitResults | ConvertTo-Json -Depth 10 > $($tempOutFile)`""}
-        $process = Get-Process -Id $processCreation.ProcessId
+        $process = Start-Process -FilePath "C:\Program Files\PowerShell\7\pwsh.exe" -ArgumentList "$($mtaFlag) -Command `"Get-WinGetConfiguration -File '$($ConfigurationFile)' | Invoke-WinGetConfiguration -AcceptConfigurationAgreements | Select-Object -ExpandProperty UnitResults | ConvertTo-Json -Depth 10 > $($tempOutFile)`"" -PassThru
+        Write-Host "Process Id: $($process.Id)"
         $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
         $process.WaitForExit()
         $installExitCode = $process.ExitCode
+
         # read the output file and write it to the console
         $unitResults = Get-Content -Path $tempOutFile
         Remove-Item -Path $tempOutFile -Force
