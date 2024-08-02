@@ -242,15 +242,6 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
             # add git to path
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") + ";C:\Program Files\Git\cmd"
         }
-
-        Write-Host "Installing git-lfs with winget"
-        winget install --id GitHub.GitLFS -e --source winget
-        $installExitCode = $LASTEXITCODE
-        Write-Host "'winget install --id GitHub.GitLFS -e --source winget' exited with code: $($installExitCode)"
-        if ($installExitCode -eq 0) {
-            # add git-lfs to path
-            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") + ";C:\Program Files\Git LFS"
-        }
     }
 
     # If we reached here without being able to install git, try with Install-WinGetPackage
@@ -292,6 +283,28 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
 
         # add git to path
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") + ";C:\Program Files\Git\cmd"
+    }
+}
+
+# install git-lfs if it's not already installed
+if (!(Get-Command git-lfs -ErrorAction SilentlyContinue)) {
+    # if winget is available, use it to install git
+    if (Get-Command winget -ErrorAction SilentlyContinue) {
+        Write-Host "Installing git-lfs with winget"
+        winget install --id GitHub.GitLFS -e --source winget
+        $installExitCode = $LASTEXITCODE
+        Write-Host "'winget install --id GitHub.GitLFS -e --source winget' exited with code: $($installExitCode)"
+        if ($installExitCode -eq 0) {
+            # add git-lfs to path
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") + ";C:\Program Files\Git LFS"
+        }
+    }
+
+    # If we reached here without being able to install git-lfs, try with Install-WinGetPackage
+    if (!(Get-Command git-lfs -ErrorAction SilentlyContinue)) {
+        # install winget and use that to install git-lfs
+        InstallPS7
+        InstallWinGet
 
         # install git-lfs via winget
         Write-Host "Installing git-lfs with Install-WinGetPackage"
@@ -324,12 +337,13 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
             exit 1
         }
 
-        # add git to path
+        # add git-lfs to path
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") + ";C:\Program Files\Git LFS"
     }
 }
 
 Write-Host "git version: $(git --version)"
+Write-Host "git-lfs version: $(git-lfs --version)"
 
 $repoCloned = $false
 if ($Pat) {
