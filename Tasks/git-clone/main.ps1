@@ -288,7 +288,7 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
 
 # install git-lfs if it's not already installed
 if (!(Get-Command git-lfs -ErrorAction SilentlyContinue)) {
-    # if winget is available, use it to install git
+    # if winget is available, use it to install git-lfs
     if (Get-Command winget -ErrorAction SilentlyContinue) {
         Write-Host "Installing git-lfs with winget"
         winget install --id GitHub.GitLFS -e --source winget
