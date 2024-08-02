@@ -242,17 +242,14 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
             # add git to path
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") + ";C:\Program Files\Git\cmd"
         }
-    }
 
-    # if choco is available, use it to install git
-    if (!(Get-Command git -ErrorAction SilentlyContinue) -and (Get-Command choco -ErrorAction SilentlyContinue)) {
-        Write-Host "Installing git with choco"
-        choco install git -y
+        Write-Host "Installing git-lfs with winget"
+        winget install --id GitHub.GitLFS -e --source winget
         $installExitCode = $LASTEXITCODE
-        Write-Host "'choco install git -y' exited with code: $($installExitCode)"
+        Write-Host "'winget install --id GitHub.GitLFS -e --source winget' exited with code: $($installExitCode)"
         if ($installExitCode -eq 0) {
-            # add git to path
-            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") + ";C:\Program Files\Git\cmd"
+            # add git-lfs to path
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") + ";C:\Program Files\Git LFS"
         }
     }
 
@@ -261,6 +258,8 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
         # install winget and use that to install git
         InstallPS7
         InstallWinGet
+
+        # install git via winget
         Write-Host "Installing git with Install-WinGetPackage"
         $tempOutFile = [System.IO.Path]::GetTempFileName() + ".out.json"
         $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe -MTA -Command `"Install-WinGetPackage -Id Git.Git | ConvertTo-Json -Depth 10 > $($tempOutFile)`""}
@@ -287,12 +286,46 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
         # If there are any errors in the package installation, we need to exit with a non-zero code
         $unitResultsObject = $unitResults | ConvertFrom-Json
         if ($unitResultsObject.Status -ne "Ok") {
-            Write-Error "There were errors installing the package"
+            Write-Error "There were errors installing the Git.Git package"
             exit 1
         }
 
         # add git to path
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") + ";C:\Program Files\Git\cmd"
+
+        # install git-lfs via winget
+        Write-Host "Installing git-lfs with Install-WinGetPackage"
+        $tempOutFile = [System.IO.Path]::GetTempFileName() + ".out.json"
+        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe -MTA -Command `"Install-WinGetPackage -Id GitHub.GitLFS | ConvertTo-Json -Depth 10 > $($tempOutFile)`""}
+        if ($processCreation.ReturnValue -ne 0) {
+            Write-Host "Failed to create process to install git-lfs with Install-WinGetPackage, error code $($processCreation.ReturnValue)"
+            exit $processCreation.ReturnValue
+        }
+        Write-Host "Waiting for Install-WinGetPackage (pid: $($processCreation.ProcessId)) to complete"
+        $process = Get-Process -Id $processCreation.ProcessId
+        $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
+        $process.WaitForExit()
+        $installExitCode = $process.ExitCode
+        $unitResults = Get-Content -Path $tempOutFile
+        Remove-Item -Path $tempOutFile -Force
+        Write-Host "Results:"
+        Write-Host $unitResults
+
+        if ($installExitCode -ne 0) {
+            Write-Error "Failed to install git-lfs with Install-WinGetPackage, error code $($installExitCode)"
+            # this was the last try, so exit with the install exit code
+            exit $installExitCode
+        }
+
+        # If there are any errors in the package installation, we need to exit with a non-zero code
+        $unitResultsObject = $unitResults | ConvertFrom-Json
+        if ($unitResultsObject.Status -ne "Ok") {
+            Write-Error "There were errors installing the GitHub.GitLFS package"
+            exit 1
+        }
+
+        # add git to path
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") + ";C:\Program Files\Git LFS"
     }
 }
 
