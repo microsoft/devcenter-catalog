@@ -253,13 +253,7 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
         # install git via winget
         Write-Host "Installing git with Install-WinGetPackage"
         $tempOutFile = [System.IO.Path]::GetTempFileName() + ".out.json"
-        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe -MTA -Command `"Install-WinGetPackage -Id Git.Git | ConvertTo-Json -Depth 10 > $($tempOutFile)`""}
-        if ($processCreation.ReturnValue -ne 0) {
-            Write-Host "Failed to create process to install git with Install-WinGetPackage, error code $($processCreation.ReturnValue)"
-            exit $processCreation.ReturnValue
-        }
-        Write-Host "Waiting for Install-WinGetPackage (pid: $($processCreation.ProcessId)) to complete"
-        $process = Get-Process -Id $processCreation.ProcessId
+        $process = Start-Process -FilePath "C:\Program Files\PowerShell\7\pwsh.exe" -ArgumentList "-MTA -Command `"Install-WinGetPackage -Source winget -Id Git.Git | ConvertTo-Json -Depth 10 > $($tempOutFile)`"" -PassThru
         $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
         $process.WaitForExit()
         $installExitCode = $process.ExitCode
@@ -309,13 +303,7 @@ if (!(Get-Command git-lfs -ErrorAction SilentlyContinue)) {
         # install git-lfs via winget
         Write-Host "Installing git-lfs with Install-WinGetPackage"
         $tempOutFile = [System.IO.Path]::GetTempFileName() + ".out.json"
-        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe -MTA -Command `"Install-WinGetPackage -Id GitHub.GitLFS | ConvertTo-Json -Depth 10 > $($tempOutFile)`""}
-        if ($processCreation.ReturnValue -ne 0) {
-            Write-Host "Failed to create process to install git-lfs with Install-WinGetPackage, error code $($processCreation.ReturnValue)"
-            exit $processCreation.ReturnValue
-        }
-        Write-Host "Waiting for Install-WinGetPackage (pid: $($processCreation.ProcessId)) to complete"
-        $process = Get-Process -Id $processCreation.ProcessId
+        $process = Start-Process -FilePath "C:\Program Files\PowerShell\7\pwsh.exe" -ArgumentList "-MTA -Command `"Install-WinGetPackage -Source winget -Id GitHub.GitLFS | ConvertTo-Json -Depth 10 > $($tempOutFile)`"" -PassThru
         $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
         $process.WaitForExit()
         $installExitCode = $process.ExitCode
