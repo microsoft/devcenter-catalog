@@ -258,10 +258,10 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
 
         if (Get-Command pwsh -ErrorAction SilentlyContinue) {
             if ($PsInstallScope -eq "CurrentUser") {
-                pwsh -Command "$($installGitCommand)"
+                pwsh -Command "`"$($installGitCommand)`""
             }
             else {
-                pwsh -MTA -Command "$($installGitCommand)"
+                pwsh -MTA -Command "`"$($installGitCommand)`""
             }
             $installExitCode = $LASTEXITCODE
         }
@@ -330,10 +330,10 @@ if (!(Get-Command git-lfs -ErrorAction SilentlyContinue)) {
 
         if (Get-Command pwsh -ErrorAction SilentlyContinue) {
             if ($PsInstallScope -eq "CurrentUser") {
-                pwsh -Command "$($installGitCommand)"
+                pwsh -Command "`"$($installGitCommand)`""
             }
             else {
-                pwsh -MTA -Command "$($installGitCommand)"
+                pwsh -MTA -Command "`"$($installGitCommand)`""
             }
             $installExitCode = $LASTEXITCODE
         }
