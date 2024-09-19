@@ -356,15 +356,18 @@ else {
         if (Get-Command pwsh -ErrorAction SilentlyContinue) {
             if ($mtaFlag)
             {
-                pwsh -MTA -Command $installPackageCommand
+                Write-Host "pwsh -MTA -Command `"$($installPackageCommand)`""
+                pwsh -MTA -Command "`"$($installPackageCommand)`""
             }
             else {
-                pwsh -Command $installPackageCommand
+                Write-Host "pwsh -Command `"$($installPackageCommand)`""
+                pwsh -Command "`"$($installPackageCommand)`""
             }
 
             $installExitCode = $LASTEXITCODE
         }
         else {
+            Write-Host "C:\Program Files\PowerShell\7\pwsh.exe $($mtaFlag) -Command `"$($installPackageCommand)`""
             $process = Start-Process -FilePath "C:\Program Files\PowerShell\7\pwsh.exe" -ArgumentList "$($mtaFlag) -Command `"$($installPackageCommand)`"" -PassThru
             $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
             $process.WaitForExit()
@@ -403,10 +406,13 @@ else {
         $applyConfigCommand = "Get-WinGetConfiguration -File '$($ConfigurationFile)' | Invoke-WinGetConfiguration -AcceptConfigurationAgreements | Select-Object -ExpandProperty UnitResults | ConvertTo-Json -Depth 10 > $($tempOutFile)"
 
         if (Get-Command pwsh -ErrorAction SilentlyContinue) {
-            pwsh -Command $applyConfigCommand
+            $command = "pwsh -Command `"$($applyConfigCommand)`""
+            Write-Host $command
+            pwsh -Command "`"$($applyConfigCommand)`""
             $installExitCode = $LASTEXITCODE
         }
         else {
+            Write-Host "C:\Program Files\PowerShell\7\pwsh.exe -Command `"$($applyConfigCommand)`""
             $process = Start-Process -FilePath "C:\Program Files\PowerShell\7\pwsh.exe" -ArgumentList "-Command `"$($applyConfigCommand)`"" -PassThru
             $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
             $process.WaitForExit()
