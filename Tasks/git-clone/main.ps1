@@ -256,24 +256,17 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
         Write-Host "Installing git with Install-WinGetPackage"
         $installExitCode = 123
         $tempOutFile = [System.IO.Path]::GetTempFileName() + ".out.json"
-        $installGitCommand = "Install-WinGetPackage -Source winget -Id Git.Git | ConvertTo-Json -Depth 10 > $($tempOutFile)"
-
-        if (Get-Command pwsh -ErrorAction SilentlyContinue) {
-            if ($PsInstallScope -eq "CurrentUser") {
-                pwsh -Command "`"$($installGitCommand)`""
-            }
-            else {
-                pwsh -MTA -Command "`"$($installGitCommand)`""
-            }
-            $installExitCode = $LASTEXITCODE
+        $installGitCommand = "Install-WinGetPackage -Source winget -Id Git.Git | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
+        if ($PsInstallScope -eq "CurrentUser") {
+            Write-Host "pwsh -Command `"$($installGitCommand)`""
+            pwsh -Command "`"$($installGitCommand)`""
         }
         else {
-            $process = Start-Process -FilePath "C:\Program Files\PowerShell\7\pwsh.exe" -ArgumentList "-MTA -Command `"$($installGitCommand)`"" -PassThru
-            $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
-            $process.WaitForExit()
-            $installExitCode = $process.ExitCode
+            Write-Host "pwsh -MTA -Command `"$($installGitCommand)`""
+            pwsh -MTA -Command "`"$($installGitCommand)`""
         }
 
+        $installExitCode = $LASTEXITCODE
         if ($installExitCode -ne 0) {
             Write-Error "Failed to install Git.Git with Install-WinGetPackage, error code $($installExitCode)"
             # this was the last try, so exit with the install exit code
@@ -284,9 +277,6 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
         if (Test-Path -Path $tempOutFile) {
             $unitResults = Get-Content -Path $tempOutFile
             Remove-Item -Path $tempOutFile -Force
-            Write-Host "Results:"
-            Write-Host $unitResults
-
             # If there are any errors in the package installation, we need to exit with a non-zero code
             $unitResultsObject = $unitResults | ConvertFrom-Json
             if ($unitResultsObject.Status -ne "Ok") {
@@ -328,24 +318,17 @@ if (!(Get-Command git-lfs -ErrorAction SilentlyContinue)) {
         Write-Host "Installing git-lfs with Install-WinGetPackage"
         $installExitCode = 123
         $tempOutFile = [System.IO.Path]::GetTempFileName() + ".out.json"
-        $installGitLfsCommand = "Install-WinGetPackage -Source winget -Id GitHub.GitLFS | ConvertTo-Json -Depth 10 > $($tempOutFile)"
-
-        if (Get-Command pwsh -ErrorAction SilentlyContinue) {
-            if ($PsInstallScope -eq "CurrentUser") {
-                pwsh -Command "`"$($installGitCommand)`""
-            }
-            else {
-                pwsh -MTA -Command "`"$($installGitCommand)`""
-            }
-            $installExitCode = $LASTEXITCODE
+        $installGitLfsCommand = "Install-WinGetPackage -Source winget -Id GitHub.GitLFS | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
+        if ($PsInstallScope -eq "CurrentUser") {
+            Write-Host "pwsh -Command `"$($installGitLfsCommand)`""
+            pwsh -Command "`"$($installGitLfsCommand)`""
         }
         else {
-            $process = Start-Process -FilePath "C:\Program Files\PowerShell\7\pwsh.exe" -ArgumentList "-MTA -Command `"$($installGitLfsCommand)`"" -PassThru
-            $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
-            $process.WaitForExit()
-            $installExitCode = $process.ExitCode
+            Write-Host "pwsh -MTA -Command `"$($installGitLfsCommand)`""
+            pwsh -MTA -Command "`"$($installGitLfsCommand)`""
         }
 
+        $installExitCode = $LASTEXITCODE
         if ($installExitCode -ne 0) {
             Write-Error "Failed to install git-lfs with Install-WinGetPackage, error code $($installExitCode)"
             # this was the last try, so exit with the install exit code
@@ -356,9 +339,6 @@ if (!(Get-Command git-lfs -ErrorAction SilentlyContinue)) {
         if (Test-Path -Path $tempOutFile) {
             $unitResults = Get-Content -Path $tempOutFile
             Remove-Item -Path $tempOutFile -Force
-            Write-Host "Results:"
-            Write-Host $unitResults
-
             # If there are any errors in the package installation, we need to exit with a non-zero code
             $unitResultsObject = $unitResults | ConvertFrom-Json
             if ($unitResultsObject.Status -ne "Ok") {

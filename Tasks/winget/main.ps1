@@ -345,8 +345,6 @@ else {
     # We're running in package mode:
     if ($Package) {
         Write-Host "Running package install: $($Package)"
-        $installExitCode = 123
-
         # If there's a version passed, add the version flag for PS
         if ($Version -ne '') {
             Write-Host "Specifying version: $($Version)"
@@ -354,28 +352,17 @@ else {
         }
 
         $installPackageCommand = "Install-WinGetPackage -scope SystemOrUnknown -Source winget -Id '$($Package)' $($versionFlag) | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
-
-        if (Get-Command pwsh -ErrorAction SilentlyContinue) {
-            if ($mtaFlag)
-            {
-                Write-Host "pwsh -MTA -Command `"$($installPackageCommand)`""
-                pwsh -MTA -Command "`"$($installPackageCommand)`""
-            }
-            else {
-                Write-Host "pwsh -Command `"$($installPackageCommand)`""
-                pwsh -Command "`"$($installPackageCommand)`""
-            }
-
-            $installExitCode = $LASTEXITCODE
+        if ($mtaFlag)
+        {
+            Write-Host "pwsh -MTA -Command `"$($installPackageCommand)`""
+            pwsh -MTA -Command "`"$($installPackageCommand)`""
         }
         else {
-            Write-Host "C:\Program Files\PowerShell\7\pwsh.exe $($mtaFlag) -Command `"$($installPackageCommand)`""
-            $process = Start-Process -FilePath "C:\Program Files\PowerShell\7\pwsh.exe" -ArgumentList "$($mtaFlag) -Command `"$($installPackageCommand)`"" -PassThru
-            $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
-            $process.WaitForExit()
-            $installExitCode = $process.ExitCode
+            Write-Host "pwsh -Command `"$($installPackageCommand)`""
+            pwsh -Command "`"$($installPackageCommand)`""
         }
 
+        $installExitCode = $LASTEXITCODE
         if ($installExitCode -ne 0) {
             Write-Error "Failed to install package. Exit code: $installExitCode"
             exit 1
@@ -385,9 +372,6 @@ else {
         if (Test-Path -Path $tempOutFile) {
             $unitResults = Get-Content -Path $tempOutFile
             Remove-Item -Path $tempOutFile -Force
-            Write-Host "Results:"
-            Write-Host $unitResults
-
             # If there are any errors in the package installation, we need to exit with a non-zero code
             $unitResultsObject = $unitResults | ConvertFrom-Json
             if ($unitResultsObject.Status -ne "Ok") {
@@ -403,23 +387,10 @@ else {
     # We're running in configuration file mode:
     elseif ($ConfigurationFile) {
         Write-Host "Running installation of configuration file: $($ConfigurationFile)"
-        $installExitCode = 123
-
         $applyConfigCommand = "Get-WinGetConfiguration -File '$($ConfigurationFile)' | Invoke-WinGetConfiguration -AcceptConfigurationAgreements | Select-Object -ExpandProperty UnitResults | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
-
-        if (Get-Command pwsh -ErrorAction SilentlyContinue) {
-            Write-Host "pwsh -Command `"$($applyConfigCommand)`""
-            pwsh -Command "`"$($applyConfigCommand)`""
-            $installExitCode = $LASTEXITCODE
-        }
-        else {
-            Write-Host "C:\Program Files\PowerShell\7\pwsh.exe -Command `"$($applyConfigCommand)`""
-            $process = Start-Process -FilePath "C:\Program Files\PowerShell\7\pwsh.exe" -ArgumentList "-Command `"$($applyConfigCommand)`"" -PassThru
-            $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
-            $process.WaitForExit()
-            $installExitCode = $process.ExitCode
-        }
-
+        Write-Host "pwsh -Command `"$($applyConfigCommand)`""
+        pwsh -Command "`"$($applyConfigCommand)`""
+        $installExitCode = $LASTEXITCODE
         if ($installExitCode -ne 0) {
             Write-Error "Failed to install packages. Exit code: $installExitCode"
             exit 1
@@ -429,9 +400,6 @@ else {
         if (Test-Path -Path $tempOutFile) {
             $unitResults = Get-Content -Path $tempOutFile
             Remove-Item -Path $tempOutFile -Force
-            Write-Host "Results:"
-            Write-Host $unitResults
-
             # If there are any errors in the unit results, we need to exit with a non-zero code
             $unitResultsObject = $unitResults | ConvertFrom-Json
             $errors = $unitResultsObject | Where-Object { $_.ResultCode -ne "0" }
