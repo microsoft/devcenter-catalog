@@ -4,7 +4,7 @@ $schema: 1.0
 name: git-clone
 description: Clones a git repository.
 author: Microsoft Corporation
-command: ./main.ps1 -RepositoryUrl {{ repositoryUrl }} -Directory {{ directory }} -Branch {{ branch }} -Pat {{ pat }}
+command: .\main.ps1 -RepositoryUrl {{ repositoryUrl }} -Directory {{ directory }} -Branch {{ branch }} -Pat {{ pat }}
 parameters:
   repositoryUrl:
     default: ''
