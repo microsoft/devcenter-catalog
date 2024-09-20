@@ -408,21 +408,13 @@ else {
         $applyConfigCommand = "Get-WinGetConfiguration -File '$($ConfigurationFile)' | Invoke-WinGetConfiguration -AcceptConfigurationAgreements | Select-Object -ExpandProperty UnitResults | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
 
         if (Get-Command pwsh -ErrorAction SilentlyContinue) {
-            if ($mtaFlag)
-            {
-                Write-Host "pwsh -MTA -Command `"$($applyConfigCommand)`""
-                pwsh -MTA -Command "`"$($applyConfigCommand)`""
-            }
-            else {
-                Write-Host "pwsh -Command `"$($applyConfigCommand)`""
-                pwsh -Command "`"$($applyConfigCommand)`""
-            }
-
+            Write-Host "pwsh -Command `"$($applyConfigCommand)`""
+            pwsh -Command "`"$($applyConfigCommand)`""
             $installExitCode = $LASTEXITCODE
         }
         else {
-            Write-Host "C:\Program Files\PowerShell\7\pwsh.exe $($mtaFlag) -Command `"$($applyConfigCommand)`""
-            $process = Start-Process -FilePath "C:\Program Files\PowerShell\7\pwsh.exe" -ArgumentList "$($mtaFlag) -Command `"$($applyConfigCommand)`"" -PassThru
+            Write-Host "C:\Program Files\PowerShell\7\pwsh.exe -Command `"$($applyConfigCommand)`""
+            $process = Start-Process -FilePath "C:\Program Files\PowerShell\7\pwsh.exe" -ArgumentList "-Command `"$($applyConfigCommand)`"" -PassThru
             $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
             $process.WaitForExit()
             $installExitCode = $process.ExitCode
