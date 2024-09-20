@@ -388,9 +388,34 @@ else {
     elseif ($ConfigurationFile) {
         Write-Host "Running installation of configuration file: $($ConfigurationFile)"
         $applyConfigCommand = "Get-WinGetConfiguration -File '$($ConfigurationFile)' | Invoke-WinGetConfiguration -AcceptConfigurationAgreements | Select-Object -ExpandProperty UnitResults | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
-        Write-Host "pwsh -Command `"$($applyConfigCommand)`""
-        pwsh -Command "`"$($applyConfigCommand)`""
-        $installExitCode = $LASTEXITCODE
+        # Method A: try to run pwsh directly:
+        #Write-Host "pwsh -Command `"$($applyConfigCommand)`""
+        #pwsh -Command "`"$($applyConfigCommand)`""
+        #$installExitCode = $LASTEXITCODE
+        #
+        # Method B: try to run pwsh via Start-Process:
+        #Write-Host "C:\Program Files\PowerShell\7\pwsh.exe -Command `"$($applyConfigCommand)`""
+        #$processOptions = @{
+        #    FilePath = "C:\Program Files\PowerShell\7\pwsh.exe"
+        #    ArgumentList = "-Command `"$($applyConfigCommand)`""
+        #    PassThru = $true
+        #    NoNewWindow = $true
+        #    WorkingDirectory = $env:TEMP
+        #}
+        #$process = Start-Process @processOptions
+        #$handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
+        #$process.WaitForExit()
+        #$installExitCode = $process.ExitCode
+        #
+        # Both methods A and B fail to run the command in the provisioning context with a timeout error,
+        # meaning that the process is not being created correctly, causing the customization task to fail
+        # after 1200 seconds.
+        # Method C: try to run pwsh via Invoke-CimMethod:
+        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe -Command `"$($applyConfigCommand)`""}
+        $process = Get-Process -Id $processCreation.ProcessId
+        $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
+        $process.WaitForExit()
+        $installExitCode = $process.ExitCode
         if ($installExitCode -ne 0) {
             Write-Error "Failed to install packages. Exit code: $installExitCode"
             exit 1
@@ -407,6 +432,8 @@ else {
                 Write-Error "There were errors applying the configuration"
                 exit 1
             }
+
+            Write-Host $unitResults # this line is only needed if using the Invoke-CimMethod functionality above, remove otherwise
         }
         else {
             Write-Host "Couldn't find output file for configuration application, assuming fail"
