@@ -136,7 +136,7 @@ function InstallPS7 {
             }
         } -Maximum 5 -Delay 100
         # Need to update the path post install
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") + ";C:\Program Files\PowerShell\7"
         Write-Host "Done Installing PowerShell 7"
     }
     else {
@@ -162,7 +162,8 @@ function InstallWinGet {
     pwsh.exe -MTA -Command "Set-PSRepository -Name PSGallery -InstallationPolicy Trusted"
 
     # check if the Microsoft.Winget.Client module is installed
-    if (!(Get-Module -ListAvailable -Name Microsoft.Winget.Client)) {
+    $wingetClientPackage = Get-Module -ListAvailable -Name Microsoft.WinGet.Client | Where-Object { $_.Version -ge "1.9.2411" }
+    if (!($wingetClientPackage)) {
         Write-Host "Installing Microsoft.Winget.Client"
         Install-Module Microsoft.WinGet.Client -Scope $PsInstallScope
         pwsh.exe -MTA -Command "Install-Module Microsoft.WinGet.Client -Scope $PsInstallScope"
@@ -173,7 +174,8 @@ function InstallWinGet {
     }
 
     # check if the Microsoft.WinGet.Configuration module is installed
-    if (!(Get-Module -ListAvailable -Name Microsoft.WinGet.Configuration)) {
+    $wingetConfigurationPackage = Get-Module -ListAvailable -Name Microsoft.WinGet.Configuration | Where-Object { $_.Version -ge "1.8.1911" }
+    if (!($wingetConfigurationPackage)) {
         Write-Host "Installing Microsoft.WinGet.Configuration"
         pwsh.exe -MTA -Command "Install-Module Microsoft.WinGet.Configuration -AllowPrerelease -Scope $PsInstallScope"
         Write-Host "Done Installing Microsoft.WinGet.Configuration"
@@ -185,7 +187,7 @@ function InstallWinGet {
     Write-Host "Updating WinGet"
     try {
         Write-Host "Attempting to repair WinGet Package Manager"
-        Repair-WinGetPackageManager -Latest -Force
+        pwsh.exe -MTA -Command "Repair-WinGetPackageManager -Latest -Force -Verbose"
         Write-Host "Done Reparing WinGet Package Manager"
     }
     catch {
@@ -343,61 +345,98 @@ else {
     # We're running in package mode:
     if ($Package) {
         Write-Host "Running package install: $($Package)"
-
         # If there's a version passed, add the version flag for PS
         if ($Version -ne '') {
             Write-Host "Specifying version: $($Version)"
             $versionFlag = "-Version '$($Version)'"
         }
 
-        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe $($mtaFlag) -Command `"Install-WinGetPackage -scope SystemOrUnknown -Source winget -Id '$($Package)' $($versionFlag) | ConvertTo-Json -Depth 10 > $($tempOutFile)`""}
-        $process = Get-Process -Id $processCreation.ProcessId
-        $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
-        $process.WaitForExit()
-        $installExitCode = $process.ExitCode
-        # read the output file and write it to the console
-        $unitResults = Get-Content -Path $tempOutFile
-        Remove-Item -Path $tempOutFile -Force
-        Write-Host "Results:"
-        Write-Host $unitResults
+        $installPackageCommand = "Install-WinGetPackage -scope SystemOrUnknown -Source winget -Id '$($Package)' $($versionFlag) | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
+        if ($mtaFlag)
+        {
+            Write-Host "pwsh -MTA -Command `"$($installPackageCommand)`""
+            pwsh -MTA -Command "`"$($installPackageCommand)`""
+        }
+        else {
+            Write-Host "pwsh -Command `"$($installPackageCommand)`""
+            pwsh -Command "`"$($installPackageCommand)`""
+        }
 
+        $installExitCode = $LASTEXITCODE
         if ($installExitCode -ne 0) {
             Write-Error "Failed to install package. Exit code: $installExitCode"
             exit 1
         }
 
-        # If there are any errors in the package installation, we need to exit with a non-zero code
-        $unitResultsObject = $unitResults | ConvertFrom-Json
-        if ($unitResultsObject.Status -ne "Ok") {
-            Write-Error "There were errors installing the package"
+        # read the output file and write it to the console
+        if (Test-Path -Path $tempOutFile) {
+            $unitResults = Get-Content -Path $tempOutFile
+            Remove-Item -Path $tempOutFile -Force
+            # If there are any errors in the package installation, we need to exit with a non-zero code
+            $unitResultsObject = $unitResults | ConvertFrom-Json
+            if ($unitResultsObject.Status -ne "Ok") {
+                Write-Error "There were errors installing the package"
+                exit 1
+            }
+        }
+        else {
+            Write-Host "Couldn't find output file for package installation, assuming fail"
             exit 1
         }
     }
     # We're running in configuration file mode:
     elseif ($ConfigurationFile) {
         Write-Host "Running installation of configuration file: $($ConfigurationFile)"
-
-        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe -Command `"Get-WinGetConfiguration -File '$($ConfigurationFile)' | Invoke-WinGetConfiguration -AcceptConfigurationAgreements | Select-Object -ExpandProperty UnitResults | ConvertTo-Json -Depth 10 > $($tempOutFile)`""}
+        $applyConfigCommand = "Get-WinGetConfiguration -File '$($ConfigurationFile)' | Invoke-WinGetConfiguration -AcceptConfigurationAgreements | Select-Object -ExpandProperty UnitResults | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
+        # Method A: try to run pwsh directly:
+        #Write-Host "pwsh -Command `"$($applyConfigCommand)`""
+        #pwsh -Command "`"$($applyConfigCommand)`""
+        #$installExitCode = $LASTEXITCODE
+        #
+        # Method B: try to run pwsh via Start-Process:
+        #Write-Host "C:\Program Files\PowerShell\7\pwsh.exe -Command `"$($applyConfigCommand)`""
+        #$processOptions = @{
+        #    FilePath = "C:\Program Files\PowerShell\7\pwsh.exe"
+        #    ArgumentList = "-Command `"$($applyConfigCommand)`""
+        #    PassThru = $true
+        #    NoNewWindow = $true
+        #    WorkingDirectory = $env:TEMP
+        #}
+        #$process = Start-Process @processOptions
+        #$handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
+        #$process.WaitForExit()
+        #$installExitCode = $process.ExitCode
+        #
+        # Both methods A and B fail to run the command in the provisioning context with a timeout error,
+        # meaning that the process is not being created correctly, causing the customization task to fail
+        # after 1200 seconds.
+        # Method C: try to run pwsh via Invoke-CimMethod:
+        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe -Command `"$($applyConfigCommand)`""}
         $process = Get-Process -Id $processCreation.ProcessId
         $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
         $process.WaitForExit()
         $installExitCode = $process.ExitCode
-        # read the output file and write it to the console
-        $unitResults = Get-Content -Path $tempOutFile
-        Remove-Item -Path $tempOutFile -Force
-        Write-Host "Results:"
-        Write-Host $unitResults
-
         if ($installExitCode -ne 0) {
             Write-Error "Failed to install packages. Exit code: $installExitCode"
             exit 1
         }
 
-        # If there are any errors in the unit results, we need to exit with a non-zero code
-        $unitResultsObject = $unitResults | ConvertFrom-Json
-        $errors = $unitResultsObject | Where-Object { $_.ResultCode -ne "0" }
-        if ($errors) {
-            Write-Error "There were errors applying the configuration"
+        # read the output file and write it to the console
+        if (Test-Path -Path $tempOutFile) {
+            $unitResults = Get-Content -Path $tempOutFile
+            Remove-Item -Path $tempOutFile -Force
+            # If there are any errors in the unit results, we need to exit with a non-zero code
+            $unitResultsObject = $unitResults | ConvertFrom-Json
+            $errors = $unitResultsObject | Where-Object { $_.ResultCode -ne "0" }
+            if ($errors) {
+                Write-Error "There were errors applying the configuration"
+                exit 1
+            }
+
+            Write-Host $unitResults # this line is only needed if using the Invoke-CimMethod functionality above, remove otherwise
+        }
+        else {
+            Write-Host "Couldn't find output file for configuration application, assuming fail"
             exit 1
         }
     }
