@@ -234,7 +234,7 @@ function InstallWinGet {
         }
 
         Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") + ";C:\Program Files\PowerShell\7"
         Write-Host "WinGet version: $(winget -v)"
     }
 
@@ -352,17 +352,17 @@ else {
         }
 
         $installPackageCommand = "Install-WinGetPackage -scope SystemOrUnknown -Source winget -Id '$($Package)' $($versionFlag) | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
-        if ($mtaFlag)
-        {
-            Write-Host "pwsh -MTA -Command `"$($installPackageCommand)`""
-            pwsh -MTA -Command "`"$($installPackageCommand)`""
+        $processOptions = @{
+           FilePath = "C:\Program Files\PowerShell\7\pwsh.exe"
+           ArgumentList = "$($mtaFlag) -Command `"$($installPackageCommand)`""
+           PassThru = $true
+           NoNewWindow = $true
+           WorkingDirectory = $env:TEMP
         }
-        else {
-            Write-Host "pwsh -Command `"$($installPackageCommand)`""
-            pwsh -Command "`"$($installPackageCommand)`""
-        }
-
-        $installExitCode = $LASTEXITCODE
+        $process = Start-Process @processOptions
+        $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
+        $process.WaitForExit()
+        $installExitCode = $process.ExitCode
         if ($installExitCode -ne 0) {
             Write-Error "Failed to install package. Exit code: $installExitCode"
             exit 1
@@ -370,7 +370,7 @@ else {
 
         # read the output file and write it to the console
         if (Test-Path -Path $tempOutFile) {
-            $unitResults = Get-Content -Path $tempOutFile
+            $unitResults = Get-Content -Path $tempOutFile -Raw | Out-String
             Remove-Item -Path $tempOutFile -Force
             # If there are any errors in the package installation, we need to exit with a non-zero code
             $unitResultsObject = $unitResults | ConvertFrom-Json
@@ -390,7 +390,7 @@ else {
         $applyConfigCommand = "Get-WinGetConfiguration -File '$($ConfigurationFile)' | Invoke-WinGetConfiguration -AcceptConfigurationAgreements | Select-Object -ExpandProperty UnitResults | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
         # Method A: try to run pwsh directly:
         #Write-Host "pwsh -Command `"$($applyConfigCommand)`""
-        #pwsh -Command "`"$($applyConfigCommand)`""
+        #pwsh.exe -Command "`"$($applyConfigCommand)`""
         #$installExitCode = $LASTEXITCODE
         #
         # Method B: try to run pwsh via Start-Process:
@@ -423,7 +423,7 @@ else {
 
         # read the output file and write it to the console
         if (Test-Path -Path $tempOutFile) {
-            $unitResults = Get-Content -Path $tempOutFile
+            $unitResults = Get-Content -Path $tempOutFile -Raw | Out-String
             Remove-Item -Path $tempOutFile -Force
             # If there are any errors in the unit results, we need to exit with a non-zero code
             $unitResultsObject = $unitResults | ConvertFrom-Json
