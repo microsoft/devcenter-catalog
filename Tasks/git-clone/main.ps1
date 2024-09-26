@@ -273,7 +273,7 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
         $process.WaitForExit()
         $installExitCode = $process.ExitCode
         if ($installExitCode -ne 0) {
-            Write-Error "Failed to install Git.Git with Install-WinGetPackage, error code $($installExitCode)"
+            Write-Error "Failed to install Git.Git with Install-WinGetPackage, error code $($installExitCode)."
             # this was the last try, so exit with the install exit code
             exit $installExitCode
         }
@@ -285,12 +285,12 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
             # If there are any errors in the package installation, we need to exit with a non-zero code
             $unitResultsObject = $unitResults | ConvertFrom-Json
             if ($unitResultsObject.Status -ne "Ok") {
-                Write-Error "There were errors installing the Git.Git package"
+                Write-Error "There were errors installing the Git.Git package."
                 exit 1
             }
         }
         else {
-            Write-Host "Couldn't find output file for Git.Git installation, assuming fail"
+            Write-Host "Couldn't find output file for Git.Git installation, assuming fail."
             exit 1
         }
 
@@ -340,7 +340,7 @@ if (!(Get-Command git-lfs -ErrorAction SilentlyContinue)) {
         $process.WaitForExit()
         $installExitCode = $process.ExitCode
         if ($installExitCode -ne 0) {
-            Write-Error "Failed to install git-lfs with Install-WinGetPackage, error code $($installExitCode)"
+            Write-Error "Failed to install git-lfs with Install-WinGetPackage, error code $($installExitCode)."
             # this was the last try, so exit with the install exit code
             exit $installExitCode
         }
@@ -352,12 +352,12 @@ if (!(Get-Command git-lfs -ErrorAction SilentlyContinue)) {
             # If there are any errors in the package installation, we need to exit with a non-zero code
             $unitResultsObject = $unitResults | ConvertFrom-Json
             if ($unitResultsObject.Status -ne "Ok") {
-                Write-Error "There were errors installing the GitHub.GitLFS package"
+                Write-Error "There were errors installing the GitHub.GitLFS package."
                 exit 1
             }
         }
         else {
-            Write-Host "Couldn't find output file for GitHub.GitLFS installation, assuming fail"
+            Write-Host "Couldn't find output file for GitHub.GitLFS installation, assuming fail."
             exit 1
         }
 
