@@ -385,6 +385,7 @@ else {
         # read the output file and write it to the console
         if (Test-Path -Path $tempOutFile) {
             $unitResults = Get-Content -Path $tempOutFile -Raw | Out-String
+            Write-Host $unitResults
             Remove-Item -Path $tempOutFile -Force
             # If there are any errors in the package installation, we need to exit with a non-zero code
             $unitResultsObject = $unitResults | ConvertFrom-Json
