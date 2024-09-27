@@ -351,36 +351,36 @@ else {
             $versionFlag = "-Version '$($Version)'"
         }
 
-        $installPackageCommand = "Install-WinGetPackage -scope SystemOrUnknown -Source winget -Id '$($Package)' $($versionFlag) | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
-        $processOptions = @{
-           FilePath = "C:\Program Files\PowerShell\7\pwsh.exe"
-           ArgumentList = "$($mtaFlag) -Command `"$($installPackageCommand)`""
-           PassThru = $true
-           NoNewWindow = $true
-           WorkingDirectory = $env:TEMP
+        $installPackageCommand = "Install-WinGetPackage -Scope SystemOrUnknown -Source winget -Id '$($Package)' $($versionFlag) | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
+        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe $($mtaFlag) -Command `"$($installPackageCommand)`""}
+        if (!($processCreation) -or !($processCreation.ProcessId)) {
+            Write-Error "Failed to install package. Process creation failed."
+            exit 1
         }
-        $process = Start-Process @processOptions
+
+        $process = Get-Process -Id $processCreation.ProcessId
         $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
         $process.WaitForExit()
         $installExitCode = $process.ExitCode
         if ($installExitCode -ne 0) {
-            Write-Error "Failed to install package. Exit code: $installExitCode"
+            Write-Error "Failed to install package. Exit code: $($installExitCode)."
             exit 1
         }
 
         # read the output file and write it to the console
         if (Test-Path -Path $tempOutFile) {
             $unitResults = Get-Content -Path $tempOutFile -Raw | Out-String
+            Write-Host $unitResults
             Remove-Item -Path $tempOutFile -Force
             # If there are any errors in the package installation, we need to exit with a non-zero code
             $unitResultsObject = $unitResults | ConvertFrom-Json
             if ($unitResultsObject.Status -ne "Ok") {
-                Write-Error "There were errors installing the package"
+                Write-Error "There were errors installing the package."
                 exit 1
             }
         }
         else {
-            Write-Host "Couldn't find output file for package installation, assuming fail"
+            Write-Host "Couldn't find output file for package installation, assuming fail."
             exit 1
         }
     }
@@ -388,55 +388,36 @@ else {
     elseif ($ConfigurationFile) {
         Write-Host "Running installation of configuration file: $($ConfigurationFile)"
         $applyConfigCommand = "Get-WinGetConfiguration -File '$($ConfigurationFile)' | Invoke-WinGetConfiguration -AcceptConfigurationAgreements | Select-Object -ExpandProperty UnitResults | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
-        # Method A: try to run pwsh directly:
-        #Write-Host "pwsh -Command `"$($applyConfigCommand)`""
-        #pwsh.exe -Command "`"$($applyConfigCommand)`""
-        #$installExitCode = $LASTEXITCODE
-        #
-        # Method B: try to run pwsh via Start-Process:
-        #Write-Host "C:\Program Files\PowerShell\7\pwsh.exe -Command `"$($applyConfigCommand)`""
-        #$processOptions = @{
-        #    FilePath = "C:\Program Files\PowerShell\7\pwsh.exe"
-        #    ArgumentList = "-Command `"$($applyConfigCommand)`""
-        #    PassThru = $true
-        #    NoNewWindow = $true
-        #    WorkingDirectory = $env:TEMP
-        #}
-        #$process = Start-Process @processOptions
-        #$handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
-        #$process.WaitForExit()
-        #$installExitCode = $process.ExitCode
-        #
-        # Both methods A and B fail to run the command in the provisioning context with a timeout error,
-        # meaning that the process is not being created correctly, causing the customization task to fail
-        # after 1200 seconds.
-        # Method C: try to run pwsh via Invoke-CimMethod:
         $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe -Command `"$($applyConfigCommand)`""}
+        if (!($processCreation) -or !($processCreation.ProcessId)) {
+            Write-Error "Failed to run configuration file installation. Process creation failed."
+            exit 1
+        }
+
         $process = Get-Process -Id $processCreation.ProcessId
         $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
         $process.WaitForExit()
         $installExitCode = $process.ExitCode
         if ($installExitCode -ne 0) {
-            Write-Error "Failed to install packages. Exit code: $installExitCode"
+            Write-Error "Failed to run configuration file installation. Exit code: $($installExitCode)."
             exit 1
         }
 
         # read the output file and write it to the console
         if (Test-Path -Path $tempOutFile) {
             $unitResults = Get-Content -Path $tempOutFile -Raw | Out-String
+            Write-Host $unitResults
             Remove-Item -Path $tempOutFile -Force
             # If there are any errors in the unit results, we need to exit with a non-zero code
             $unitResultsObject = $unitResults | ConvertFrom-Json
             $errors = $unitResultsObject | Where-Object { $_.ResultCode -ne "0" }
             if ($errors) {
-                Write-Error "There were errors applying the configuration"
+                Write-Error "There were errors applying the configuration."
                 exit 1
             }
-
-            Write-Host $unitResults # this line is only needed if using the Invoke-CimMethod functionality above, remove otherwise
         }
         else {
-            Write-Host "Couldn't find output file for configuration application, assuming fail"
+            Write-Host "Couldn't find output file for configuration application, assuming fail."
             exit 1
         }
     }
