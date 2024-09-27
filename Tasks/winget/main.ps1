@@ -338,23 +338,8 @@ else {
     $tempOutFile = [System.IO.Path]::GetTempFileName() + ".out.json"
 
     $mtaFlag = "-MTA"
-    $scopeFlag = ""
-    $sourceFlag = "-Source winget"
-    $packagesThatRequireSystemScopeUnderSystemAccount = @(
-        "microsoft.visualstudiocode",
-        "microsoft.visualstudiocode.cli",
-        "microsoft.visualstudiocodeinsiders",
-        "microsoft.visualstudiocodeinsiders.cli",
-        "microsoft.powertoys"
-    )
-    if ($packagesThatRequireSystemScopeUnderSystemAccount -contains ($Package.ToLowerInvariant())) {
-        $scopeFlag = "-Scope SystemOrUnknown"
-    }
-
     if ($PsInstallScope -eq "CurrentUser") {
         $mtaFlag = ""
-        $scopeFlag = ""
-        $sourceFlag = ""
     }
 
     # We're running in package mode:
@@ -366,7 +351,7 @@ else {
             $versionFlag = "-Version '$($Version)'"
         }
 
-        $installPackageCommand = "Install-WinGetPackage $($scopeFlag) $($sourceFlag) -Id '$($Package)' $($versionFlag) | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
+        $installPackageCommand = "Install-WinGetPackage -Scope SystemOrUnknown -Source winget -Id '$($Package)' $($versionFlag) | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
         $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe $($mtaFlag) -Command `"$($installPackageCommand)`""}
         if (!($processCreation) -or !($processCreation.ProcessId)) {
             Write-Error "Failed to install package. Process creation failed."
