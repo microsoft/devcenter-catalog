@@ -347,13 +347,14 @@ else {
         "microsoft.visualstudiocodeinsiders.cli",
         "microsoft.powertoys"
     )
+    if ($packagesThatRequireSystemScopeUnderSystemAccount -contains ($Package.ToLowerInvariant())) {
+        $scopeFlag = "-Scope SystemOrUnknown"
+    }
+
     if ($PsInstallScope -eq "CurrentUser") {
         $mtaFlag = ""
         $scopeFlag = ""
         $sourceFlag = ""
-    }
-    elseif ($packagesThatRequireSystemScopeUnderSystemAccount -contains ($Package.ToLowerInvariant())) {
-        $scopeFlag = "-Scope SystemOrUnknown"
     }
 
     # We're running in package mode:
@@ -366,14 +367,13 @@ else {
         }
 
         $installPackageCommand = "Install-WinGetPackage $($scopeFlag) $($sourceFlag) -Id '$($Package)' $($versionFlag) | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
-        $processOptions = @{
-            FilePath = "C:\Program Files\PowerShell\7\pwsh.exe"
-            ArgumentList = "$($mtaFlag) -Command `"$($installPackageCommand)`""
-            PassThru = $true
-            NoNewWindow = $true
-            WorkingDirectory = $env:TEMP
+        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe $($mtaFlag) -Command `"$($installPackageCommand)`""}
+        if (!($processCreation) -or !($processCreation.ProcessId)) {
+            Write-Error "Failed to install package. Process creation failed."
+            exit 1
         }
-        $process = Start-Process @processOptions
+
+        $process = Get-Process -Id $processCreation.ProcessId
         $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
         $process.WaitForExit()
         $installExitCode = $process.ExitCode

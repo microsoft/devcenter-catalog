@@ -261,14 +261,13 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
 
         $tempOutFile = [System.IO.Path]::GetTempFileName() + ".out.json"
         $installGitCommand = "Install-WinGetPackage -Source winget -Id Git.Git | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
-        $processOptions = @{
-            FilePath = "C:\Program Files\PowerShell\7\pwsh.exe"
-            ArgumentList = "$($mtaFlag) -Command `"$($installGitCommand)`""
-            PassThru = $true
-            NoNewWindow = $true
-            WorkingDirectory = $env:TEMP
+        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe $($mtaFlag) -Command `"$($installGitCommand)`""}
+        if (!($processCreation) -or !($processCreation.ProcessId)) {
+            Write-Error "Failed to install Git.Git package. Process creation failed."
+            exit 1
         }
-        $process = Start-Process @processOptions
+
+        $process = Get-Process -Id $processCreation.ProcessId
         $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
         $process.WaitForExit()
         $installExitCode = $process.ExitCode
@@ -328,14 +327,13 @@ if (!(Get-Command git-lfs -ErrorAction SilentlyContinue)) {
 
         $tempOutFile = [System.IO.Path]::GetTempFileName() + ".out.json"
         $installGitLfsCommand = "Install-WinGetPackage -Source winget -Id GitHub.GitLFS | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
-        $processOptions = @{
-            FilePath = "C:\Program Files\PowerShell\7\pwsh.exe"
-            ArgumentList = "$($mtaFlag) -Command `"$($installGitLfsCommand)`""
-            PassThru = $true
-            NoNewWindow = $true
-            WorkingDirectory = $env:TEMP
+        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe $($mtaFlag) -Command `"$($installGitLfsCommand)`""}
+        if (!($processCreation) -or !($processCreation.ProcessId)) {
+            Write-Error "Failed to install git-lfs package. Process creation failed."
+            exit 1
         }
-        $process = Start-Process @processOptions
+
+        $process = Get-Process -Id $processCreation.ProcessId
         $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
         $process.WaitForExit()
         $installExitCode = $process.ExitCode
