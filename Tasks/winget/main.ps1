@@ -338,8 +338,10 @@ else {
     $tempOutFile = [System.IO.Path]::GetTempFileName() + ".out.json"
 
     $mtaFlag = "-MTA"
+    $scopeFlagValue = "SystemOrUnknown"
     if ($PsInstallScope -eq "CurrentUser") {
         $mtaFlag = ""
+        $scopeFlagValue = "UserOrUnknown"
     }
 
     # We're running in package mode:
@@ -351,38 +353,48 @@ else {
             $versionFlag = "-Version '$($Version)'"
         }
 
-        $installPackageCommand = "Install-WinGetPackage -Scope SystemOrUnknown -Source winget -Id '$($Package)' $($versionFlag) | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
-        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe $($mtaFlag) -Command `"$($installPackageCommand)`""}
-        if (!($processCreation) -or !($processCreation.ProcessId)) {
-            Write-Error "Failed to install package. Process creation failed."
-            exit 1
-        }
+        $installCommandBlock = {
+            $installPackageCommand = "Install-WinGetPackage -Scope $($scopeFlagValue) -Source winget -Id '$($Package)' $($versionFlag) | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
+            $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe $($mtaFlag) -Command `"$($installPackageCommand)`""}
+            if (!($processCreation) -or !($processCreation.ProcessId)) {
+                Write-Error "Failed to install package. Process creation failed."
+                exit 1
+            }
 
-        $process = Get-Process -Id $processCreation.ProcessId
-        $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
-        $process.WaitForExit()
-        $installExitCode = $process.ExitCode
-        if ($installExitCode -ne 0) {
-            Write-Error "Failed to install package. Exit code: $($installExitCode)."
-            exit 1
-        }
+            $process = Get-Process -Id $processCreation.ProcessId
+            $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
+            $process.WaitForExit()
+            $installExitCode = $process.ExitCode
+            if ($installExitCode -ne 0) {
+                Write-Error "Failed to install package. Exit code: $($installExitCode)."
+                exit 1
+            }
 
-        # read the output file and write it to the console
-        if (Test-Path -Path $tempOutFile) {
-            $unitResults = Get-Content -Path $tempOutFile -Raw | Out-String
-            Write-Host $unitResults
-            Remove-Item -Path $tempOutFile -Force
-            # If there are any errors in the package installation, we need to exit with a non-zero code
-            $unitResultsObject = $unitResults | ConvertFrom-Json
-            if ($unitResultsObject.Status -ne "Ok") {
-                Write-Error "There were errors installing the package."
+            # read the output file and write it to the console
+            if (Test-Path -Path $tempOutFile) {
+                $unitResults = Get-Content -Path $tempOutFile -Raw | Out-String
+                Write-Host $unitResults
+                Remove-Item -Path $tempOutFile -Force
+                $unitResultsObject = $unitResults | ConvertFrom-Json
+
+                # If the initial scope didn't produce an installer, retry with an "Any" scope
+                if (($unitResultsObject.Status -eq "NoApplicableInstallers") -and ($scopeFlagValue -ne "Any")) {
+                    ([ref]$scopeFlagValue).Value = "Any"
+                    .$installCommandBlock
+                }
+
+                # If there are any errors in the package installation, we need to exit with a non-zero code
+                if ($unitResultsObject.Status -ne "Ok") {
+                    Write-Error "There were errors installing the package."
+                    exit 1
+                }
+            }
+            else {
+                Write-Host "Couldn't find output file for package installation, assuming fail."
                 exit 1
             }
         }
-        else {
-            Write-Host "Couldn't find output file for package installation, assuming fail."
-            exit 1
-        }
+        .$installCommandBlock
     }
     # We're running in configuration file mode:
     elseif ($ConfigurationFile) {
