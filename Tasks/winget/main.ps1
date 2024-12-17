@@ -164,9 +164,9 @@ function InstallWinGet {
     # check if the Microsoft.Winget.Client module is installed
     $wingetClientPackage = Get-Module -ListAvailable -Name Microsoft.WinGet.Client | Where-Object { $_.Version -ge "1.9.2411" }
     if (!($wingetClientPackage)) {
-        Write-Host "Installing Microsoft.Winget.Client"
-        Install-Module Microsoft.WinGet.Client -Scope $PsInstallScope
-        pwsh.exe -MTA -Command "Install-Module Microsoft.WinGet.Client -Scope $PsInstallScope"
+        Write-Host "Installing Microsoft.Winget.Client -RequiredVersion 1.9.25190"
+        Install-Module Microsoft.WinGet.Client -Scope $PsInstallScope -RequiredVersion 1.9.25190
+        pwsh.exe -MTA -Command "Install-Module Microsoft.WinGet.Client -Scope $PsInstallScope -RequiredVersion 1.9.25190"
         Write-Host "Done Installing Microsoft.Winget.Client"
     }
     else {
@@ -177,7 +177,7 @@ function InstallWinGet {
     $wingetConfigurationPackage = Get-Module -ListAvailable -Name Microsoft.WinGet.Configuration | Where-Object { $_.Version -ge "1.8.1911" }
     if (!($wingetConfigurationPackage)) {
         Write-Host "Installing Microsoft.WinGet.Configuration"
-        pwsh.exe -MTA -Command "Install-Module Microsoft.WinGet.Configuration -AllowPrerelease -Scope $PsInstallScope"
+        pwsh.exe -MTA -Command "Install-Module Microsoft.WinGet.Configuration -Scope $PsInstallScope"
         Write-Host "Done Installing Microsoft.WinGet.Configuration"
     }
     else {
