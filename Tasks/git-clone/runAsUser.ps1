@@ -1,6 +1,5 @@
 $CustomizationScriptsDir = "C:\DevBoxCustomizations"
 $LockFile = "lockfile"
-$SetVariablesScript = "setVariables.ps1"
 $RunAsUserScript = "runAsUser.ps1"
 $CleanupScript = "cleanup.ps1"
 $RunAsUserTask = "DevBoxCustomizations"
@@ -56,7 +55,7 @@ else {
 
 $msUiXamlPackage = Get-AppxPackage -Name "Microsoft.UI.Xaml.2.8" | Where-Object { $_.Version -ge "8.2310.30001.0" }
 if (!($msUiXamlPackage)) {
-    # instal Microsoft.UI.Xaml
+    # install Microsoft.UI.Xaml
     try{
         Write-Host "Installing Microsoft.UI.Xaml"
         $architecture = "x64"
@@ -102,5 +101,3 @@ Write-Host "Done Updating WinGet"
 
 # Revert PSGallery installation policy to untrusted
 Set-PSRepository -Name "PSGallery" -InstallationPolicy Untrusted
-
-

@@ -33,8 +33,11 @@ documentation:
   notes: |
     This task allows you to clone a repository. When the "pat" parameter is
     not specified, the task will queue the cloning operation to happen on the
-    first user login.Otherwise the task will clone the repository during the
+    first user login. Otherwise the task will clone the repository during the
     dev box provisioning stage.
+    We encourage you to pass a reference uri to a KeyVault secret as the value
+    for the "pat" parameter instead of including the Raw secret value in yamls.
+    Note that Powershell7, Git will be installed during this task.
   examples:
     - name: git-clone
       description: Clone this repository into C:\Workspaces
