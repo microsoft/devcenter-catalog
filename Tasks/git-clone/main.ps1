@@ -38,11 +38,11 @@ function SetupScheduledTasks {
     }
 
     # Reference: https://learn.microsoft.com/en-us/windows/win32/taskschd/task-scheduler-objects
-    $ShedService = New-Object -comobject "Schedule.Service"
-    $ShedService.Connect()
+    $SchedService = New-Object -comobject "Schedule.Service"
+    $SchedService.Connect()
 
     # Schedule the cleanup script to run every minute as SYSTEM
-    $Task = $ShedService.NewTask(0)
+    $Task = $SchedService.NewTask(0)
     $Task.RegistrationInfo.Description = "Dev Box Customizations Cleanup"
     $Task.Settings.Enabled = $true
     $Task.Settings.AllowDemandStart = $false
@@ -55,11 +55,11 @@ function SetupScheduledTasks {
     $Action.Path = "PowerShell.exe"
     $Action.Arguments = "Set-ExecutionPolicy Bypass -Scope Process -Force; $($CustomizationScriptsDir)\$($CleanupScript)"
 
-    $TaskFolder = $ShedService.GetFolder("\")
+    $TaskFolder = $SchedService.GetFolder("\")
     $TaskFolder.RegisterTaskDefinition("$($CleanupTask)", $Task , 6, "NT AUTHORITY\SYSTEM", $null, 5)
 
     # Schedule the script to be run in the user context on login
-    $Task = $ShedService.NewTask(0)
+    $Task = $SchedService.NewTask(0)
     $Task.RegistrationInfo.Description = "Dev Box Customizations"
     $Task.Settings.Enabled = $true
     $Task.Settings.AllowDemandStart = $false
@@ -72,7 +72,7 @@ function SetupScheduledTasks {
     $Action.Path = "C:\Program Files\PowerShell\7\pwsh.exe"
     $Action.Arguments = "-MTA -Command $($CustomizationScriptsDir)\$($RunAsUserScript)"
 
-    $TaskFolder = $ShedService.GetFolder("\")
+    $TaskFolder = $SchedService.GetFolder("\")
     $TaskFolder.RegisterTaskDefinition("$($RunAsUserTask)", $Task , 6, "Users", $null, 4)
     Write-Host "Done setting up scheduled tasks"
 }
@@ -185,9 +185,11 @@ function InstallWinGet {
     }
 
     if ($PsInstallScope -eq "CurrentUser") {
+        # Under a user account, the way to materialize winget.exe and make it work is by installing DesktopAppInstaller appx,
+        # which in turn may have Xaml and VC++ redistributable requirements.
         $msUiXamlPackage = Get-AppxPackage -Name "Microsoft.UI.Xaml.2.8" | Where-Object { $_.Version -ge "8.2310.30001.0" }
         if (!($msUiXamlPackage)) {
-            # instal Microsoft.UI.Xaml
+            # install Microsoft.UI.Xaml
             try {
                 Write-Host "Installing Microsoft.UI.Xaml"
                 $architecture = "x64"
@@ -232,144 +234,111 @@ function InstallWinGet {
     pwsh.exe -MTA -Command "Set-PSRepository -Name PSGallery -InstallationPolicy Untrusted"
 }
 
-# install git if it's not already installed
-if (!(Get-Command git -ErrorAction SilentlyContinue)) {
-    # if winget is available, use it to install git
-    if (Get-Command winget -ErrorAction SilentlyContinue) {
-        Write-Host "Installing git with winget"
-        winget install --id Git.Git -e --source winget
-        $installExitCode = $LASTEXITCODE
-        Write-Host "'winget install --id Git.Git -e --source winget' exited with code: $($installExitCode)"
-        if ($installExitCode -eq 0) {
+
+function InstallPackage{
+    param (
+        [string]$PackageId,
+        [string]$PackageCommand,
+        [string]$PackagePath
+    )
+
+    # install package if it's not already installed
+    if (!(Get-Command $PackageCommand -ErrorAction SilentlyContinue)) {
+        # if winget is available, use it to install package
+        if (Get-Command winget -ErrorAction SilentlyContinue) {
+            Write-Host "Installing $PackageId with winget"
+            winget install --id $PackageId -e --source winget
+            $installExitCode = $LASTEXITCODE
+            Write-Host "'winget install --id $PackageId -e --source winget' exited with code: $($installExitCode)"
+            if ($installExitCode -eq 0) {
+                # add package path to path
+                $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") + ";" + $PackagePath
+            }
+        }
+
+        # If we reached here without being able to install the package, try with Install-WinGetPackage
+        if (!(Get-Command $PackageCommand -ErrorAction SilentlyContinue)) {
+            # install winget and use that to install packages
+            
+            # winget is not available for system context, so we need to leverage WingGet cmdlets for system context.
+            # The WinGet cmdlets aren't supported in PowerShell 5, so we need to install Powershell7 here. 
+            InstallPS7
+            InstallWinGet
+
+            # install package via winget client
+            Write-Host "Installing $PackageId with Install-WinGetPackage"
+            $mtaFlag = "-MTA"
+            $scopeFlagValue = "SystemOrUnknown"
+            if ($PsInstallScope -eq "CurrentUser") {
+                $mtaFlag = ""
+                $scopeFlagValue = "UserOrUnknown"
+            }
+
+            $tempOutFile = [System.IO.Path]::GetTempFileName() + ".out.json"
+
+            $installCommandBlock = {
+                $installPackageCommand = "Install-WinGetPackage -Scope $($scopeFlagValue) -Source winget -Id $($PackageId) | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
+                $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe $($mtaFlag) -Command `"$($installPackageCommand)`""}
+                if (!($processCreation) -or !($processCreation.ProcessId)) {
+                    Write-Error "Failed to install $PackageId package. Process creation failed."
+                    exit 1
+                }
+        
+                $process = Get-Process -Id $processCreation.ProcessId
+                $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
+                $process.WaitForExit()
+                $installExitCode = $process.ExitCode
+                if ($installExitCode -ne 0) {
+                    Write-Error "Failed to install $PackageId with Install-WinGetPackage, error code $($installExitCode)."
+                    # this was the last try, so exit with the install exit code
+                    exit $installExitCode
+                }
+        
+                # read the output file and write it to the console
+                if (Test-Path -Path $tempOutFile) {
+                    $unitResults = Get-Content -Path $tempOutFile -Raw | Out-String
+                    Write-Host $unitResults
+                    Remove-Item -Path $tempOutFile -Force
+                    # If there are any errors in the package installation, we need to exit with a non-zero code
+                    $unitResultsObject = $unitResults | ConvertFrom-Json
+        
+                    # If the initial scope didn't produce an installer, retry with an "Any" scope
+                    if (($unitResultsObject.Status -eq "NoApplicableInstallers") -and ($scopeFlagValue -ne "Any")) {
+                        ([ref]$scopeFlagValue).Value = "Any"
+                        .$installCommandBlock
+                    }
+        
+                    # If there are any errors in the package installation, we need to exit with a non-zero code
+                    if ($unitResultsObject.Status -ne "Ok") {
+                        Write-Error "There were errors installing the package."
+                        exit 1
+                    }
+                }
+                else {
+                    Write-Host "Couldn't find output file for $PackageId installation, assuming fail."
+                    exit 1
+                }
+            }
+            .$installCommandBlock
+
             # add git to path
-            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") + ";C:\Program Files\Git\cmd"
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") + ";" + $PackagePath
         }
-    }
-
-    # If we reached here without being able to install git, try with Install-WinGetPackage
-    if (!(Get-Command git -ErrorAction SilentlyContinue)) {
-        # install winget and use that to install git
-        InstallPS7
-        InstallWinGet
-
-        # install git via winget
-        Write-Host "Installing git with Install-WinGetPackage"
-        $mtaFlag = "-MTA"
-        if ($PsInstallScope -eq "CurrentUser") {
-            $mtaFlag = ""
-        }
-
-        $tempOutFile = [System.IO.Path]::GetTempFileName() + ".out.json"
-        $installGitCommand = "Install-WinGetPackage -Source winget -Id Git.Git | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
-        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe $($mtaFlag) -Command `"$($installGitCommand)`""}
-        if (!($processCreation) -or !($processCreation.ProcessId)) {
-            Write-Error "Failed to install Git.Git package. Process creation failed."
-            exit 1
-        }
-
-        $process = Get-Process -Id $processCreation.ProcessId
-        $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
-        $process.WaitForExit()
-        $installExitCode = $process.ExitCode
-        if ($installExitCode -ne 0) {
-            Write-Error "Failed to install Git.Git with Install-WinGetPackage, error code $($installExitCode)."
-            # this was the last try, so exit with the install exit code
-            exit $installExitCode
-        }
-
-        # read the output file and write it to the console
-        if (Test-Path -Path $tempOutFile) {
-            $unitResults = Get-Content -Path $tempOutFile -Raw | Out-String
-            Write-Host $unitResults
-            Remove-Item -Path $tempOutFile -Force
-            # If there are any errors in the package installation, we need to exit with a non-zero code
-            $unitResultsObject = $unitResults | ConvertFrom-Json
-            if ($unitResultsObject.Status -ne "Ok") {
-                Write-Error "There were errors installing the Git.Git package."
-                exit 1
-            }
-        }
-        else {
-            Write-Host "Couldn't find output file for Git.Git installation, assuming fail."
-            exit 1
-        }
-
-        # add git to path
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") + ";C:\Program Files\Git\cmd"
     }
 }
 
-# install git-lfs if it's not already installed
-if (!(Get-Command git-lfs -ErrorAction SilentlyContinue)) {
-    # if winget is available, use it to install git-lfs
-    if (Get-Command winget -ErrorAction SilentlyContinue) {
-        Write-Host "Installing git-lfs with winget"
-        winget install --id GitHub.GitLFS -e --source winget
-        $installExitCode = $LASTEXITCODE
-        Write-Host "'winget install --id GitHub.GitLFS -e --source winget' exited with code: $($installExitCode)"
-        if ($installExitCode -eq 0) {
-            # add git-lfs to path
-            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") + ";C:\Program Files\Git LFS"
-        }
-    }
-
-    # If we reached here without being able to install git-lfs, try with Install-WinGetPackage
-    if (!(Get-Command git-lfs -ErrorAction SilentlyContinue)) {
-        # install winget and use that to install git-lfs
-        InstallPS7
-        InstallWinGet
-
-        # install git-lfs via winget
-        Write-Host "Installing git-lfs with Install-WinGetPackage"
-        $mtaFlag = "-MTA"
-        if ($PsInstallScope -eq "CurrentUser") {
-            $mtaFlag = ""
-        }
-
-        $tempOutFile = [System.IO.Path]::GetTempFileName() + ".out.json"
-        $installGitLfsCommand = "Install-WinGetPackage -Source winget -Id GitHub.GitLFS | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
-        $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe $($mtaFlag) -Command `"$($installGitLfsCommand)`""}
-        if (!($processCreation) -or !($processCreation.ProcessId)) {
-            Write-Error "Failed to install git-lfs package. Process creation failed."
-            exit 1
-        }
-
-        $process = Get-Process -Id $processCreation.ProcessId
-        $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
-        $process.WaitForExit()
-        $installExitCode = $process.ExitCode
-        if ($installExitCode -ne 0) {
-            Write-Error "Failed to install git-lfs with Install-WinGetPackage, error code $($installExitCode)."
-            # this was the last try, so exit with the install exit code
-            exit $installExitCode
-        }
-
-        # read the output file and write it to the console
-        if (Test-Path -Path $tempOutFile) {
-            $unitResults = Get-Content -Path $tempOutFile -Raw | Out-String
-            Write-Host $unitResults
-            Remove-Item -Path $tempOutFile -Force
-            # If there are any errors in the package installation, we need to exit with a non-zero code
-            $unitResultsObject = $unitResults | ConvertFrom-Json
-            if ($unitResultsObject.Status -ne "Ok") {
-                Write-Error "There were errors installing the GitHub.GitLFS package."
-                exit 1
-            }
-        }
-        else {
-            Write-Host "Couldn't find output file for GitHub.GitLFS installation, assuming fail."
-            exit 1
-        }
-
-        # add git-lfs to path
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") + ";C:\Program Files\Git LFS"
-    }
-}
+InstallPackage -PackageId "Git.Git" -PackagePath "C:\Program Files\Git\cmd" -PackageCommand "git"
 
 Write-Host "git version: $(git --version)"
-Write-Host "git-lfs version: $(git-lfs --version)"
 
 $repoCloned = $false
+
+# Disable credential prompting when running under system context to make sure the clone operation doesn't hang
+$credentialInteractiveFlag = @('-c', 'credential.interactive=Never')
+if ($PsInstallScope -eq "CurrentUser") {
+    $credentialInteractiveFlag = @()
+}
+
 if ($Pat) {
     # When a PAT is provided, we'll attempt to clone the repository during provisioning time.
     # If this fails, we'll try again when the user logs in.
@@ -392,11 +361,13 @@ if ($Pat) {
         # Attempt to clone
         Push-Location $TargetRepoDirectory
         $b64pat = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("user:$Pat"))
+        
+        # Disable credential prompting here to make sure the clone operation doesn't hang
         if ($Branch) {
-            git -c http.extraHeader="Authorization: Basic $b64pat" clone -b $Branch $RepositoryUrl . 3>&1 2>&1
+            git $credentialInteractiveFlag -c http.extraHeader="Authorization: Basic $b64pat" clone -b $Branch $RepositoryUrl . 3>&1 2>&1
         }
         else {
-            git -c http.extraHeader="Authorization: Basic $b64pat" clone $RepositoryUrl . 3>&1 2>&1
+            git $credentialInteractiveFlag -c http.extraHeader="Authorization: Basic $b64pat" clone $RepositoryUrl . 3>&1 2>&1
         }
 
         if ($LASTEXITCODE -ne 0) {
@@ -530,11 +501,13 @@ if (!$repoCloned -and ($RepositoryUrl -match "github.com")) {
 
         # Attempt to clone
         Push-Location $TargetRepoDirectory
+
+        # Disable credential prompting here to make sure the clone operation doesn't hang
         if ($Branch) {
-            git clone -b $Branch $RepositoryUrl . 3>&1 2>&1
+            git $credentialInteractiveFlag clone -b $Branch $RepositoryUrl . 3>&1 2>&1
         }
         else {
-            git clone $RepositoryUrl . 3>&1 2>&1
+            git $credentialInteractiveFlag clone $RepositoryUrl . 3>&1 2>&1
         }
 
         if ($LASTEXITCODE -ne 0) {
