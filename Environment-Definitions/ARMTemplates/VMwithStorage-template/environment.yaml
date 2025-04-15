@@ -2,4 +2,4 @@ name: VMStorageConfig
 summary: Deployment of a Virtual Machine with a Storage Account using Bicep.
 description: Deploys a Virtual Machine with a System-Assigned Managed Identity, a Storage Account, a Virtual Network, and a Network Interface. Assigns the VM the "Storage Blob Data Contributor" role for the Storage Account.
 runner: ARM
-templatePath: main.bicep
+templatePath: azuredeploy.json
