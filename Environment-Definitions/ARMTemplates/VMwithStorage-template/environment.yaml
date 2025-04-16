@@ -1,3 +1,11 @@
+# yaml-language-server: $schema=https://github.com/Azure/deployment-environments/releases/download/2022-11-11-preview/manifest.schema.json
+name: VmwithStorage-template
+version: 1.0.0
+summary: Azure VM and Storage Environment
+description: Deploys an Azure VM with Storage, it is compatible with azd.
+runner: ARM
+templatePath: azuredeploy.json
+
 parameters:
   - id: vmName
     type: string
