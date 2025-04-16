@@ -68,3 +68,7 @@ parameters:
     allowed:
       - Dynamic
       - Static
+
+  - id: resourceGroup
+    type: string
+    description: Name of the resource group to deploy resources into
