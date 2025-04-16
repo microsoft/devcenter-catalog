@@ -1,41 +1,62 @@
-name: vm-with-storage
-resourceType: Microsoft.Resources/deployments
-location: [resourceGroup().location]
 parameters:
-  adminUsername:
+  - id: vmName
     type: string
-    description: Admin username for the VM
-  adminPassword:
+    description: Name of the Virtual Machine
+
+  - id: adminUsername
+    type: string
+    description: Admin username for the Virtual Machine
+
+  - id: adminPassword
     type: securestring
-    description: Admin password for the VM
-  vmName:
+    description: Admin password for the Virtual Machine
+
+  - id: location
     type: string
-    description: Name of the virtual machine
-  vmSize:
+    description: Azure region for deployment
+    allowed:
+      - eastus
+      - westus
+      - westeurope
+      - southeastasia
+
+  - id: storageAccountType
     type: string
-    default: Standard_DS1_v2
-    description: Size of the virtual machine
-  storageAccountType:
-    type: string
-    default: Standard_LRS
     description: Type of storage account
-  osDiskSizeGB:
+    allowed:
+      - Standard_LRS
+      - Standard_GRS
+      - Standard_ZRS
+      - Premium_LRS
+
+  - id: vmSize
+    type: string
+    description: Size of the Virtual Machine
+    default: Standard_DS1_v2
+
+  - id: osType
+    type: string
+    description: Operating system type
+    allowed:
+      - Windows
+      - Linux
+
+  - id: diskSizeGB
     type: int
-    default: 128
     description: Size of the OS disk in GB
-template:
-  file: azuredeploy.json
-  parameters:
-    adminUsername: $(adminUsername)
-    adminPassword: $(adminPassword)
-    vmName: $(vmName)
-    vmSize: $(vmSize)
-    storageAccountType: $(storageAccountType)
-    osDiskSizeGB: $(osDiskSizeGB)
-outputs:
-  vmId:
+    default: 128
+
+  - id: vnetName
     type: string
-    description: Resource ID of the deployed VM
-  publicIpAddress:
+    description: Name of the Virtual Network
+
+  - id: subnetName
     type: string
-    description: Public IP address of the VM
+    description: Name of the Subnet
+
+  - id: publicIpAddressType
+    type: string
+    description: Public IP address allocation method
+    allowed:
+      - Dynamic
+      - Static

@@ -1,49 +1,26 @@
 {
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
-  "parameters": {
-    "vmName": {
-      "type": "string",
-      "defaultValue": "myVM",
-      "metadata": {
-        "description": "Name of the Virtual Machine."
-      }
-    },
-    "adminUsername": {
-      "type": "string",
-      "metadata": {
-        "description": "Admin username for the VM."
-      }
-    },
-    "adminPassword": {
-      "type": "secureString",
-      "metadata": {
-        "description": "Admin password for the VM."
-      }
-    },
-    "location": {
-      "type": "string",
-      "defaultValue": "[resourceGroup().location]",
-      "metadata": {
-        "description": "Location for all resources."
-      }
-    }
-  },
+  "parameters": {},
   "variables": {
-    "storageAccountName": "[toLower(concat('st', uniqueString(resourceGroup().id)))]",
-    "vnetName": "myVNet",
+    "location": "[resourceGroup().location]",
+    "vmName": "myVM",
+    "storageAccountName": "[toLower(concat('stor', uniqueString(resourceGroup().id)))]",
+    "vnetName": "myVnet",
     "subnetName": "mySubnet",
     "nicName": "myNic",
-    "publicIpName": "myPublicIP",
-    "nsgName": "myNSG",
-    "vmIdentityName": "[concat(parameters('vmName'), '-identity')]"
+    "addressPrefix": "10.0.0.0/16",
+    "subnetPrefix": "10.0.0.0/24",
+    "adminUsername": "azureuser",
+    "adminPassword": "P@ssw0rd1234!",
+    "roleAssignmentGuid": "[guid(concat('roleAssignment', variables('vmName'), variables('storageAccountName')))]"
   },
   "resources": [
     {
       "type": "Microsoft.Storage/storageAccounts",
       "apiVersion": "2022-09-01",
       "name": "[variables('storageAccountName')]",
-      "location": "[parameters('location')]",
+      "location": "[variables('location')]",
       "sku": {
         "name": "Standard_LRS"
       },
@@ -54,67 +31,30 @@
       "type": "Microsoft.Network/virtualNetworks",
       "apiVersion": "2022-07-01",
       "name": "[variables('vnetName')]",
-      "location": "[parameters('location')]",
+      "location": "[variables('location')]",
       "properties": {
         "addressSpace": {
           "addressPrefixes": [
-            "10.0.0.0/16"
+            "[variables('addressPrefix')]"
           ]
         },
         "subnets": [
           {
             "name": "[variables('subnetName')]",
             "properties": {
-              "addressPrefix": "10.0.0.0/24"
+              "addressPrefix": "[variables('subnetPrefix')]"
             }
           }
         ]
-      }
-    },
-    {
-      "type": "Microsoft.Network/networkSecurityGroups",
-      "apiVersion": "2022-07-01",
-      "name": "[variables('nsgName')]",
-      "location": "[parameters('location')]",
-      "properties": {
-        "securityRules": [
-          {
-            "name": "default-allow-ssh",
-            "properties": {
-              "priority": 1000,
-              "protocol": "Tcp",
-              "access": "Allow",
-              "direction": "Inbound",
-              "sourceAddressPrefix": "*",
-              "sourcePortRange": "*",
-              "destinationAddressPrefix": "*",
-              "destinationPortRange": "22"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "type": "Microsoft.Network/publicIPAddresses",
-      "apiVersion": "2022-07-01",
-      "name": "[variables('publicIpName')]",
-      "location": "[parameters('location')]",
-      "sku": {
-        "name": "Basic"
-      },
-      "properties": {
-        "publicIPAllocationMethod": "Dynamic"
       }
     },
     {
       "type": "Microsoft.Network/networkInterfaces",
       "apiVersion": "2022-07-01",
       "name": "[variables('nicName')]",
-      "location": "[parameters('location')]",
+      "location": "[variables('location')]",
       "dependsOn": [
-        "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]",
-        "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIpName'))]",
-        "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgName'))]"
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
       ],
       "properties": {
         "ipConfigurations": [
@@ -124,23 +64,17 @@
               "subnet": {
                 "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnetName'))]"
               },
-              "privateIPAllocationMethod": "Dynamic",
-              "publicIPAddress": {
-                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIpName'))]"
-              }
+              "privateIPAllocationMethod": "Dynamic"
             }
           }
-        ],
-        "networkSecurityGroup": {
-          "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgName'))]"
-        }
+        ]
       }
     },
     {
       "type": "Microsoft.Compute/virtualMachines",
       "apiVersion": "2023-03-01",
-      "name": "[parameters('vmName')]",
-      "location": "[parameters('location')]",
+      "name": "[variables('vmName')]",
+      "location": "[variables('location')]",
       "dependsOn": [
         "[resourceId('Microsoft.Network/networkInterfaces', variables('nicName'))]"
       ],
@@ -149,12 +83,12 @@
       },
       "properties": {
         "hardwareProfile": {
-          "vmSize": "Standard_DS1_v2"
+          "vmSize": "Standard_B1s"
         },
         "osProfile": {
-          "computerName": "[parameters('vmName')]",
-          "adminUsername": "[parameters('adminUsername')]",
-          "adminPassword": "[parameters('adminPassword')]"
+          "computerName": "[variables('vmName')]",
+          "adminUsername": "[variables('adminUsername')]",
+          "adminPassword": "[variables('adminPassword')]"
         },
         "storageProfile": {
           "imageReference": {
@@ -179,26 +113,26 @@
     {
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
-      "name": "[guid(resourceGroup().id, variables('storageAccountName'), parameters('vmName'), 'StorageBlobDataContributor')]",
+      "name": "[variables('roleAssignmentGuid')]",
       "dependsOn": [
-        "[resourceId('Microsoft.Compute/virtualMachines', parameters('vmName'))]",
+        "[resourceId('Microsoft.Compute/virtualMachines', variables('vmName'))]",
         "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
       ],
       "properties": {
         "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')]",
-        "principalId": "[reference(resourceId('Microsoft.Compute/virtualMachines', parameters('vmName')), '2023-03-01', 'Full').identity.principalId]",
+        "principalId": "[reference(resourceId('Microsoft.Compute/virtualMachines', variables('vmName')), '2023-03-01', 'Full').identity.principalId]",
         "scope": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
       }
     }
   ],
   "outputs": {
+    "vmName": {
+      "type": "string",
+      "value": "[variables('vmName')]"
+    },
     "storageAccountName": {
       "type": "string",
       "value": "[variables('storageAccountName')]"
-    },
-    "vmName": {
-      "type": "string",
-      "value": "[parameters('vmName')]"
     }
   }
 }
