@@ -195,6 +195,26 @@ function InstallWinGet {
         Write-Error $_
     }
 
+    $msVCLibsPackage = Get-AppxPackage -Name "Microsoft.VCLibs.140.00.UWPDesktop" | Where-Object { $_.Version -ge "14.0.30035.0" }
+    if (!($msVCLibsPackage)) {
+    # Install Microsoft.VCLibs.140.00.UWPDesktop
+    try {
+        Write-Host "Installing Microsoft.VCLibs.140.00.UWPDesktop"
+        $architecture = "x64"
+        if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
+            $architecture = "arm64"
+        }
+        $MsVCLibs = "$env:TEMP\$([System.IO.Path]::GetRandomFileName())-Microsoft.VCLibs.140.00.UWPDesktop"
+        $MsVCLibsZip = "$($MsVCLibs).zip"
+        # TODO: check on this link bc seems it's no longer there
+        Invoke-WebRequest -Uri "https://www.nuget.org/api/v2/package/Microsoft.VCLibs.140.00.UWPDesktop/14.0.30035" -OutFile $MsVCLibsZip
+        Expand-Archive $MsVCLibsZip -DestinationPath $MsVCLibs
+        Add-AppxPackage -Path "$($MsVCLibs)\tools\AppX\$($architecture)\Release\Microsoft.VCLibs.140.00.UWPDesktop.appx" -ForceApplicationShutdown
+        Write-Host "Done Installing Microsoft.VCLibs.140.00.UWPDesktop"
+    } catch {
+        Write-Host "Failed to install Microsoft.VCLibs.140.00.UWPDesktop"
+        Write-Error $_
+
     if ($PsInstallScope -eq "CurrentUser") {
         $msUiXamlPackage = Get-AppxPackage -Name "Microsoft.UI.Xaml.2.8" | Where-Object { $_.Version -ge "8.2310.30001.0" }
         if (!($msUiXamlPackage)) {
