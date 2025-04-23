@@ -205,11 +205,10 @@ function InstallWinGet {
             $architecture = "arm64"
         }
         $MsVCLibs = "$env:TEMP\$([System.IO.Path]::GetRandomFileName())-Microsoft.VCLibs.140.00.UWPDesktop"
-        $MsVCLibsZip = "$($MsVCLibs).zip"
-        # TODO: check on this link bc seems it's no longer there
-        Invoke-WebRequest -Uri "https://www.nuget.org/api/v2/package/Microsoft.VCLibs.140.00.UWPDesktop/14.0.30035" -OutFile $MsVCLibsZip
-        Expand-Archive $MsVCLibsZip -DestinationPath $MsVCLibs
-        Add-AppxPackage -Path "$($MsVCLibs)\tools\AppX\$($architecture)\Release\Microsoft.VCLibs.140.00.UWPDesktop.appx" -ForceApplicationShutdown
+        $MsVCLibsAppx = "$($MsVCLibs).appx"
+
+        Invoke-WebRequest -Uri "https://aka.ms/Microsoft.VCLibs.$($architecture).14.00.Desktop.appx" -OutFile $MsVCLibsAppx
+        Add-AppxPackage -Path $MsVCLibsAppx -ForceApplicationShutdown
         Write-Host "Done Installing Microsoft.VCLibs.140.00.UWPDesktop"
     } catch {
         Write-Host "Failed to install Microsoft.VCLibs.140.00.UWPDesktop"
