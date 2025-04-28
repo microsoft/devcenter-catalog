@@ -187,15 +187,34 @@ function InstallWinGet {
     if ($PsInstallScope -eq "CurrentUser") {
         # Under a user account, the way to materialize winget.exe and make it work is by installing DesktopAppInstaller appx,
         # which in turn may have Xaml and VC++ redistributable requirements.
+        
+        $architecture = "x64"
+        if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
+            $architecture = "arm64"
+        }
+
+        $msVCLibsPackage = Get-AppxPackage -Name "Microsoft.VCLibs.140.00.UWPDesktop" | Where-Object { $_.Version -ge "14.0.30035.0" }
+        if (!($msVCLibsPackage)) {
+        # Install Microsoft.VCLibs.140.00.UWPDesktop
+            try {
+                Write-Host "Installing Microsoft.VCLibs.140.00.UWPDesktop"
+                $MsVCLibs = "$env:TEMP\$([System.IO.Path]::GetRandomFileName())-Microsoft.VCLibs.140.00.UWPDesktop"
+                $MsVCLibsAppx = "$($MsVCLibs).appx"
+
+                Invoke-WebRequest -Uri "https://aka.ms/Microsoft.VCLibs.$($architecture).14.00.Desktop.appx" -OutFile $MsVCLibsAppx
+                Add-AppxPackage -Path $MsVCLibsAppx -ForceApplicationShutdown
+                Write-Host "Done Installing Microsoft.VCLibs.140.00.UWPDesktop"
+            } catch {
+                Write-Host "Failed to install Microsoft.VCLibs.140.00.UWPDesktop"
+                Write-Error $_
+            }
+        }
+
         $msUiXamlPackage = Get-AppxPackage -Name "Microsoft.UI.Xaml.2.8" | Where-Object { $_.Version -ge "8.2310.30001.0" }
         if (!($msUiXamlPackage)) {
             # install Microsoft.UI.Xaml
             try {
                 Write-Host "Installing Microsoft.UI.Xaml"
-                $architecture = "x64"
-                if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
-                    $architecture = "arm64"
-                }
                 $MsUiXaml = "$env:TEMP\$([System.IO.Path]::GetRandomFileName())-Microsoft.UI.Xaml.2.8.6"
                 $MsUiXamlZip = "$($MsUiXaml).zip"
                 Invoke-WebRequest -Uri "https://www.nuget.org/api/v2/package/Microsoft.UI.Xaml/2.8.6" -OutFile $MsUiXamlZip
