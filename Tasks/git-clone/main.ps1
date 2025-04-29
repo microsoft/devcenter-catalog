@@ -266,9 +266,9 @@ function InstallPackage{
         # if winget is available, use it to install package
         if (Get-Command winget -ErrorAction SilentlyContinue) {
             Write-Host "Installing $PackageId with winget"
-            winget install --id $PackageId -e --source winget
+            winget install --id $PackageId -e --source winget --silent
             $installExitCode = $LASTEXITCODE
-            Write-Host "'winget install --id $PackageId -e --source winget' exited with code: $($installExitCode)"
+            Write-Host "'winget install --id $PackageId -e --source winget --silent' exited with code: $($installExitCode)"
             if ($installExitCode -eq 0) {
                 # add package path to path
                 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") + ";" + $PackagePath
@@ -296,7 +296,7 @@ function InstallPackage{
             $tempOutFile = [System.IO.Path]::GetTempFileName() + ".out.json"
 
             $installCommandBlock = {
-                $installPackageCommand = "Install-WinGetPackage -Scope $($scopeFlagValue) -Source winget -Id $($PackageId) | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
+                $installPackageCommand = "Install-WinGetPackage -Scope $($scopeFlagValue) -Mode Silent -Source winget -Id $($PackageId) | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
                 $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe $($mtaFlag) -Command `"$($installPackageCommand)`""}
                 if (!($processCreation) -or !($processCreation.ProcessId)) {
                     Write-Error "Failed to install $PackageId package. Process creation failed."

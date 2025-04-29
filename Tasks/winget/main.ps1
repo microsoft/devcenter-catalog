@@ -337,7 +337,7 @@ if ($RunAsUser -eq "true") {
             $versionFlag = "--version `"$($Version)`""
         }
         Write-Host "Appending package install: $($Package)"
-        AppendToUserScript "winget install --id `"$($Package)`" $($versionFlag) --accept-source-agreements --accept-package-agreements"
+        AppendToUserScript "winget install --id `"$($Package)`" $($versionFlag) --accept-source-agreements --accept-package-agreements --silent"
         AppendToUserScript "Write-Host `"winget exit code: `$LASTEXITCODE`""
     }
     # We're running in configuration file mode:
@@ -373,7 +373,7 @@ else {
         }
 
         $installCommandBlock = {
-            $installPackageCommand = "Install-WinGetPackage -Scope $($scopeFlagValue) -Source winget -Id '$($Package)' $($versionFlag) | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
+            $installPackageCommand = "Install-WinGetPackage -Scope $($scopeFlagValue) -Mode Silent -Source winget -Id '$($Package)' $($versionFlag) | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
             $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe $($mtaFlag) -Command `"$($installPackageCommand)`""}
             if (!($processCreation) -or !($processCreation.ProcessId)) {
                 Write-Error "Failed to install package. Process creation failed."
