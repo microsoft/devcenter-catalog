@@ -296,7 +296,7 @@ function InstallPackage{
             $tempOutFile = [System.IO.Path]::GetTempFileName() + ".out.json"
 
             $installCommandBlock = {
-                $installPackageCommand = "Install-WinGetPackage -Scope $($scopeFlagValue) -Source winget -Id $($PackageId) | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
+                $installPackageCommand = "Install-WinGetPackage -Scope $($scopeFlagValue) -Mode Silent -Source winget -Id $($PackageId) | ConvertTo-Json -Depth 10 | Tee-Object -FilePath '$($tempOutFile)'"
                 $processCreation = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine="C:\Program Files\PowerShell\7\pwsh.exe $($mtaFlag) -Command `"$($installPackageCommand)`""}
                 if (!($processCreation) -or !($processCreation.ProcessId)) {
                     Write-Error "Failed to install $PackageId package. Process creation failed."
