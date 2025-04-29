@@ -266,9 +266,9 @@ function InstallPackage{
         # if winget is available, use it to install package
         if (Get-Command winget -ErrorAction SilentlyContinue) {
             Write-Host "Installing $PackageId with winget"
-            winget install --id $PackageId -e --source winget
+            winget install --id $PackageId -e --source winget --silent
             $installExitCode = $LASTEXITCODE
-            Write-Host "'winget install --id $PackageId -e --source winget' exited with code: $($installExitCode)"
+            Write-Host "'winget install --id $PackageId -e --source winget --silent' exited with code: $($installExitCode)"
             if ($installExitCode -eq 0) {
                 # add package path to path
                 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") + ";" + $PackagePath

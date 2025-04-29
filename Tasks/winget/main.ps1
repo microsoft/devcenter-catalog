@@ -337,7 +337,7 @@ if ($RunAsUser -eq "true") {
             $versionFlag = "--version `"$($Version)`""
         }
         Write-Host "Appending package install: $($Package)"
-        AppendToUserScript "winget install --id `"$($Package)`" $($versionFlag) --accept-source-agreements --accept-package-agreements"
+        AppendToUserScript "winget install --id `"$($Package)`" $($versionFlag) --accept-source-agreements --accept-package-agreements --silent"
         AppendToUserScript "Write-Host `"winget exit code: `$LASTEXITCODE`""
     }
     # We're running in configuration file mode:
