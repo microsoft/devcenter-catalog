@@ -1,0 +1,18 @@
+# This devbox.yaml installs the open-source OrchardCore ASP.NET web application on a Dev Box
+# and prepares build caches by running dotnet build
+
+setupTasks:
+  - task: choco
+    inputs:
+      package: git
+  - task: choco
+    inputs:
+      package: dotnet-sdk
+  - task: powershell
+    inputs:
+      command: 'git clone https://github.com/OrchardCMS/OrchardCore.git'
+      workingDirectory: 'C:\\Projects'
+  - task: powershell
+    inputs:
+      command: dotnet build
+      workingDirectory: 'C:\\Projects'
