@@ -384,8 +384,21 @@ else {
             $process.WaitForExit()
             $installExitCode = $process.ExitCode
             if ($installExitCode -ne 0) {
-                Write-Error "Failed to install package. Exit code: $($installExitCode)."
-                exit 1
+                if ($PsInstallScope -eq "CurrentUser") {
+                    # try executing the commandlet via Start-Process instead of using Invoke-CimMethod, as this works better in some cases
+                    $process = Start-Process -FilePath "C:\Program Files\PowerShell\7\pwsh.exe" -ArgumentList "-Command $($installPackageCommand)" -PassThru
+                    $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
+                    $process.WaitForExit()
+                    $installExitCode = $process.ExitCode
+                    if ($installExitCode -ne 0) {
+                        Write-Error "Failed to install package. Exit code: $($installExitCode)."
+                        exit 2
+                    }
+                }
+                else {
+                    Write-Error "Failed to install package. Exit code: $($installExitCode)."
+                    exit 1
+                }
             }
 
             # read the output file and write it to the console
@@ -429,8 +442,21 @@ else {
         $process.WaitForExit()
         $installExitCode = $process.ExitCode
         if ($installExitCode -ne 0) {
-            Write-Error "Failed to run configuration file installation. Exit code: $($installExitCode)."
-            exit 1
+            if ($PsInstallScope -eq "CurrentUser") {
+                # try executing the commandlet via Start-Process instead of using Invoke-CimMethod, as this works better in some cases
+                $process = Start-Process -FilePath "C:\Program Files\PowerShell\7\pwsh.exe" -ArgumentList "-Command $($applyConfigCommand)" -PassThru
+                $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
+                $process.WaitForExit()
+                $installExitCode = $process.ExitCode
+                if ($installExitCode -ne 0) {
+                    Write-Error "Failed to run configuration file installation. Exit code: $($installExitCode)."
+                    exit 2
+                }
+            }
+            else {
+                Write-Error "Failed to run configuration file installation. Exit code: $($installExitCode)."
+                exit 1
+            }
         }
 
         # read the output file and write it to the console
