@@ -308,9 +308,22 @@ function InstallPackage{
                 $process.WaitForExit()
                 $installExitCode = $process.ExitCode
                 if ($installExitCode -ne 0) {
-                    Write-Error "Failed to install $PackageId with Install-WinGetPackage, error code $($installExitCode)."
-                    # this was the last try, so exit with the install exit code
-                    exit $installExitCode
+                    if ($PsInstallScope -eq "CurrentUser") {
+                        # try executing the commandlet via Start-Process instead of using Invoke-CimMethod, as this works better in some cases
+                        $process = Start-Process -FilePath "C:\Program Files\PowerShell\7\pwsh.exe" -ArgumentList "-Command $($installPackageCommand)" -PassThru
+                        $handle = $process.Handle # cache process.Handle so ExitCode isn't null when we need it below
+                        $process.WaitForExit()
+                        $installExitCode = $process.ExitCode
+                        if ($installExitCode -ne 0) {
+                            Write-Error "Failed to install package. Exit code: $($installExitCode)."
+                            exit $installExitCode
+                        }
+                    }
+                    else {
+                        Write-Error "Failed to install $PackageId with Install-WinGetPackage, error code $($installExitCode)."
+                        # this was the last try, so exit with the install exit code
+                        exit $installExitCode
+                    }
                 }
         
                 # read the output file and write it to the console
