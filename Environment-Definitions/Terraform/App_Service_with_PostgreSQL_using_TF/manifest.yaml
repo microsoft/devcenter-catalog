@@ -1,0 +1,27 @@
+name: App-service-with-PostgreSQL-using-TF
+summary: Creates App service with PostgreSQL using TF
+description: Deploys App service with PostgreSQL environment using Terraform, it is compatible with azd.
+runner: Terraform
+templatePath: main.tf
+parameters:
+  - id: "environment_name"
+    name: "Environment Name"
+    required: true
+    type: "string"
+  - id: "location"
+    name: "Location"
+    required: true
+    type: "string"
+  - id: "principal_id"
+    name: "Principal Id"
+    required: true
+    type: "string"
+  - id: "env_principal_id"
+    name: "Env Principal Id"
+    required: true
+    type: "string"
+  - id: "repoUrl"
+    name: "Repository URL"
+    type: string
+    description: Path the the application source code
+    default: "https://github.com/azure-samples/todo-java-postgresSQL-terraform"
